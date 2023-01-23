@@ -3,14 +3,14 @@ import java.util.ArrayList;
 import java.util.Objects;
 
 public class Epic extends Task { // класс для комплексной задач типа Epic
-    protected ArrayList<SubTask> subTasks = new ArrayList<>(); // список для подзадач типа SubTask
+    protected ArrayList<Subtask> Subtasks = new ArrayList<>(); // список для подзадач типа Subtask
 
-    public Epic(String name, String description, Integer id) {
-        super(name, description, id);
+    public Epic(Integer id , String name, String description) {
+        super(id, name, description);
     }
 
-    public ArrayList<SubTask> getSubTasks() {
-        return subTasks;
+    public ArrayList<Subtask> getSubTasks() {
+        return Subtasks;
     }
 
     @Override
@@ -19,18 +19,18 @@ public class Epic extends Task { // класс для комплексной з�
         if (o == null || getClass() != o.getClass()) return false;
         if (!super.equals(o)) return false;
         Epic epic = (Epic) o;
-        return Objects.equals(subTasks, epic.subTasks);
+        return Objects.equals(Subtasks, epic.Subtasks);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(super.hashCode(), subTasks);
+        return Objects.hash(super.hashCode(), Subtasks);
     }
 
     @Override
     public String toString() {
         return "Epic{" +
-                "subTasks=" + subTasks +
+                "Subtasks=" + Subtasks +
                 ", name='" + name + '\'' +
                 ", description='" + description + '\'' +
                 ", id=" + id +

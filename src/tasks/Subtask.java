@@ -1,10 +1,10 @@
 package tasks;
 import java.util.Objects;
 
-public class SubTask extends Task { // класс для подзадачи, которые используются как составные части в Epic
-    protected Integer epicID; // параметр, который показывает к какой задаче типа Epic относится SubTask
-    public SubTask(String name, String description, Integer id, Integer epicID) {
-        super(name, description, id);
+public class Subtask extends Task { // класс для подзадачи, которые используются как составные части в Epic
+    protected Integer epicID; // параметр, который показывает к какой задаче типа Epic относится Subtask
+    public Subtask(Integer id, String name, String description, Integer epicID) {
+        super(id, name, description);
         this.epicID = epicID;
     }
     public Integer getEpicID() {
@@ -18,9 +18,9 @@ public class SubTask extends Task { // класс для подзадачи, к�
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof SubTask)) return false;
+        if (!(o instanceof Subtask)) return false;
         if (!super.equals(o)) return false;
-        SubTask subTask = (SubTask) o;
+        Subtask subTask = (Subtask) o;
         return Objects.equals(getEpicID(), subTask.getEpicID());
     }
     @Override
@@ -30,7 +30,7 @@ public class SubTask extends Task { // класс для подзадачи, к�
 
     @Override
     public String toString() {
-        return "SubTask{" +
+        return "Subtask{" +
                 "epicID=" + epicID +
                 ", name='" + name + '\'' +
                 ", description='" + description + '\'' +

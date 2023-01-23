@@ -3,22 +3,23 @@ import java.util.Objects;
 import static tasks.StatusMarker.NEW;
 
 public class Task { // класс стандартной задачи
+    protected Integer id; // номер задачи
     protected String name; // имя задачи
     protected String description;  // описание к задаче
-    protected Integer id; // номер задачи
     protected String status; // статус задачи
 
-    public Task(String name, String description, Integer id) { // конструктор класса для новой задачи
+
+    public Task(Integer id, String name, String description) { // конструктор класса для новой задачи
+        this.id = id;
         this.name = name;
         this.description = description;
-        this.id = id;
         this.status = NEW; //  статус -  новая NEW
     }
 
-    public Task(String name, String description, Integer id, String status) { // конструктор с указанием статуса
+    public Task(Integer id, String name, String description, String status) { // конструктор с указанием статуса
+        this.id = id;
         this.name = name;
         this.description = description;
-        this.id = id;
         this.status = status;
     }
 
