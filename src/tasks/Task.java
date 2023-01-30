@@ -6,22 +6,23 @@ public class Task { // класс стандартной задачи
     protected Integer id; // номер задачи
     protected String name; // имя задачи
     protected String description;  // описание к задаче
-    protected String status; // статус задачи
+    protected StatusMarker status; // статус задачи
 
 
     public Task(Integer id, String name, String description) { // конструктор класса для новой задачи
         this.id = id;
         this.name = name;
         this.description = description;
-        this.status = NEW; //  статус -  новая NEW
+        this.status = NEW;  //  статус -  новая NEW
     }
 
-    public Task(Integer id, String name, String description, String status) { // конструктор с указанием статуса
+    public Task(Integer id, String name, String description, StatusMarker status) { // конструктор с указанием статуса
         this.id = id;
         this.name = name;
         this.description = description;
         this.status = status;
     }
+
 
     public String getName() {
         return name;
@@ -43,11 +44,11 @@ public class Task { // класс стандартной задачи
         return id;
     }
 
-    public String getStatus() {
+    public StatusMarker getStatus() {
         return status;
     }
 
-    public void setStatus(String status) {
+    public void setStatus(StatusMarker status) {
         this.status = status;
     }
 
