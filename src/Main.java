@@ -1,4 +1,3 @@
-import managers.HistoryManager;
 import managers.InMemoryHistoryManager;
 import managers.InMemoryTaskManager;
 import managers.Managers;
@@ -17,7 +16,7 @@ public class Main {
         System.out.println("Проверка работы программы - будем использовать вызовы методов с комментариями\n");
 
         InMemoryTaskManager inMemoryTaskManager = (InMemoryTaskManager) Managers.getDefault();
-        InMemoryHistoryManager inMemoryHistoryManager = (InMemoryHistoryManager) Managers.getHistory();
+        InMemoryHistoryManager inMemoryHistoryManager = (InMemoryHistoryManager) Managers.getDefaultHistory();
 
         System.out.println("Проверка логики создания задач Task. Метод createNewTask(task).");
         final Task task1 = new Task(-1, "Задача типа task_1", "Описание задачи task_1", NEW);
@@ -257,7 +256,7 @@ public class Main {
         inMemoryTaskManager.getTaskById(16);
         inMemoryTaskManager.getTaskById(14);
 
-        inMemoryTaskManager.historyManager.printHistory();
+        inMemoryTaskManager.historyManager.showHistory();
 
 
     }

@@ -22,7 +22,7 @@ public class InMemoryHistoryManager implements HistoryManager {
     }
 
     @Override
-    public void printHistory() {
+    public void showHistory() {
         System.out.println(" ");
         System.out.println("Вывод истории просмотра задач: ");
 

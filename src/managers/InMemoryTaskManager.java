@@ -16,7 +16,7 @@ public class InMemoryTaskManager implements TaskManager { // класс мене
     protected HashMap<Integer, Subtask> subtasks = new HashMap<>(); // мапа для хранения задач [ID] [subTask]
     protected Integer taskID = 0;
 
-    public HistoryManager historyManager = Managers.getHistory();
+    public HistoryManager historyManager = Managers.getDefaultHistory();
 
 
     //  методы для TASK = 6 шт
