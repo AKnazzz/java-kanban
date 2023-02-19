@@ -57,4 +57,6 @@ public interface TaskManager {
     Subtask deleteSubTaskById(Integer id);  // 6. метод для удаления SUBTASK по идентификатору ID.
 
 
+    ArrayList<Task> history(); //Возвращает последние 10 просмотренных задач.
+
 }

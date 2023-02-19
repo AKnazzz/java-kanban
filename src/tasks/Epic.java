@@ -37,4 +37,5 @@ public class Epic extends Task { // класс для комплексной з�
                 ", status='" + status + '\'' +
                 '}';
     }
+
 }

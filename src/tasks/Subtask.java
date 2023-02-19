@@ -7,6 +7,8 @@ public class Subtask extends Task { // класс для подзадачи, к�
         super(id, name, description);
         this.epicID = epicID;
     }
+
+
     public Integer getEpicID() {
         return epicID;
     }

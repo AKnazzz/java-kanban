@@ -40,8 +40,9 @@ public class InMemoryTaskManager implements TaskManager { // класс мене
     @Override
     public Task createNewTask(Task task) {                    //  4. метод для создания новой задачи типа (TASK)
         final Task newTask = new Task(++taskID, task.getName(), task.getDescription()); // используем конструктор со статусом NEW по умолчанию
-        if (!tasks.containsKey(newTask.getId()))
-            tasks.put(newTask.getId(), newTask);
+        int newTaskId = newTask.getId();
+        if (!tasks.containsKey(newTaskId))
+            tasks.put(newTaskId, newTask);
         else {
             System.out.println("Задача с таким номером (ID) уже есть в списке.");
             return null;
@@ -64,9 +65,12 @@ public class InMemoryTaskManager implements TaskManager { // класс мене
 
     @Override
     public Task deleteTaskById(Integer id) {        // 6. метод удаления TASK по номеру идентификатору ID.
+
         final Task deletedTask = tasks.get(id);
+        historyManager.remove(id);
         tasks.remove(id);
         return deletedTask;
+
     }
 
 
@@ -119,11 +123,12 @@ public class InMemoryTaskManager implements TaskManager { // класс мене
         for (Subtask subtask : findAllOfEpic(getEpicById(id))) {
             if (subtask.getEpicID() == id) {
                 subtasks.remove(subtask.getId());
+                historyManager.remove(subtask.getId());
             }
         }
+        historyManager.remove(id);
         epics.get(id).getSubTasks().clear();
         epics.remove(id);
-
     }
 
     @Override
@@ -159,7 +164,7 @@ public class InMemoryTaskManager implements TaskManager { // класс мене
         final Subtask newSubtask = new Subtask(++taskID, subTask.getName(), subTask.getDescription(), epic.getId());
         if (!subtasks.containsKey(newSubtask.getId())) {
             subtasks.put(newSubtask.getId(), newSubtask);
-            epics.get(epic.getId()).getSubTasks().add(newSubtask);
+               epics.get(epic.getId()).getSubTasks().add(newSubtask);
         } else {
             System.out.println("Подзадача с таким номером ID уже есть в списке");
             return null;
@@ -218,10 +223,17 @@ public class InMemoryTaskManager implements TaskManager { // класс мене
     @Override
     public Subtask deleteSubTaskById(Integer id) {     // 6. метод для удаления SUBTASK по идентификатору ID.
         final Subtask deletedTask = subtasks.get(id);
+        historyManager.remove(id);
         epics.get(deletedTask.getEpicID()).getSubTasks().remove(deletedTask);
         subtasks.remove(id);
         return deletedTask;
     }
 
+
+    // Новый метод по возвращает ArrayList истории обращений
+    @Override
+    public ArrayList<Task> history(){
+        return (ArrayList)historyManager.getHistory();
+    }
 
 }
