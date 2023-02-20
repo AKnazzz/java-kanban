@@ -1,12 +1,14 @@
 package managers;
 
-public class Managers { // Утилитарный класс,
-                        // должен сам подбирать нужную реализацию TaskManager и возвращать объект правильного типа.
-    public static TaskManager getDefault(){
+/* Утилитарный класс,
+должен сам подбирать нужную реализацию TaskManager и возвращать объект правильного типа.
+ */
+public class Managers {
+    public static TaskManager getDefault() {
         return new InMemoryTaskManager();
     }
 
-    public static HistoryManager getDefaultHistory(){
+    public static HistoryManager getDefaultHistory() {
         return new InMemoryHistoryManager();
     }
 

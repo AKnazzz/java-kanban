@@ -1,17 +1,17 @@
 package managers;
 
-class Node <Task> {                                    // элемент-узел для двухсвязного списка
+class Node<Task> {                                    // элемент-узел для двухсвязного списка
     private Task data;
-    private Node prev;
-    private Node next;
+    private Node<Task> prev;
+    private Node<Task> next;
 
-   public Node(Task data, Node<Task> prev, Node<Task> next) {
+    public Node(Task data, Node<Task> prev, Node<Task> next) {
         this.data = data;
         this.prev = prev;
         this.next = next;
     }
 
-    public Task getData() {
+    public Task getTask() {
         return data;
     }
 
