@@ -74,7 +74,6 @@ public class Main {
 
 
         System.out.println("\n......Третье обращение к задачам ( -> 5, 3, 4, 7, 1, 6, 2 -> ):");
-        task2 = inMemoryTaskManager.getTaskById(task2.getId());
         subtask1 = inMemoryTaskManager.getSubtaskById(subtask1.getId());
         epic1 = inMemoryTaskManager.getEpicById(epic1.getId());
         epic2 = inMemoryTaskManager.getEpicById(epic2.getId());

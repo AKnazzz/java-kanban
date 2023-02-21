@@ -1,11 +1,13 @@
 package managers;
 
-class Node<Task> {                                    // элемент-узел для двухсвязного списка
-    private Task data;
-    private Node<Task> prev;
-    private Node<Task> next;
+import tasks.Task;
 
-    public Node(Task data, Node<Task> prev, Node<Task> next) {
+class Node<T extends Task> {                                    // элемент-узел для двухсвязного списка
+    private Task data;
+    private Node<T> prev;
+    private Node<T> next;
+
+    public Node(Task data, Node<T> prev, Node<T> next) {
         this.data = data;
         this.prev = prev;
         this.next = next;
@@ -19,19 +21,19 @@ class Node<Task> {                                    // элемент-узел
         this.data = data;
     }
 
-    public Node<Task> getNext() {
+    public Node<T> getNext() {
         return next;
     }
 
-    public void setNext(Node<Task> next) {
+    public void setNext(Node<T> next) {
         this.next = next;
     }
 
-    public Node<Task> getPrev() {
+    public Node<T> getPrev() {
         return prev;
     }
 
-    public void setPrev(Node<Task> prev) {
+    public void setPrev(Node<T> prev) {
         this.prev = prev;
     }
 }

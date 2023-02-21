@@ -32,15 +32,15 @@ public class InMemoryHistoryManager implements HistoryManager {
     }
 
 
-    public class CustomLinkedList<T> {   // список для хранения порядка вызовов метода add (в этом порядке просмотры будут выстраиваться в истории)
-        private final HashMap<Integer, Node<Task>> customLinkedMap = new HashMap<>();
-        private Node<Task> head;
-        private Node<Task> tail;
+    public class CustomLinkedList<T extends Task> {   // список для хранения порядка вызовов метода add (в этом порядке просмотры будут выстраиваться в истории)
+        private final HashMap<Integer, Node<T>> customLinkedMap = new HashMap<>();
+        private Node<T> head;
+        private Node<T> tail;
 
 
         public void linkLast(Task task) {                      // метод для добавления задачи в конец списка
-            final Node<Task> exTail = tail;
-            final Node<Task> newNode = new Node<>(task, exTail, null);
+            final Node<T> exTail = tail;
+            final Node<T> newNode = new Node<>(task, exTail, null);
             tail = newNode;
 
             if (exTail == null) {
@@ -53,23 +53,21 @@ public class InMemoryHistoryManager implements HistoryManager {
 
         public List<Task> getTasks() {                       //  метод для сбора всех задачи в ArrayList
             List<Task> listHistory = new ArrayList<>();
-            Node<Task> node = head;
+            Node<T> node = head;
 
             while (node != null) {
                 listHistory.add(node.getTask());
                 node = node.getNext();
             }
-            //прошу уточнить почему использование данного метода выглядит не совсем корректно ?
-            // Collections.reverse(listHistory);  вызывается для вывода истории в порядке, иначе порядок будет не тот
-            //   return listHistory;
-            //}
+              return listHistory;
 
-            List<Task> reverse = new ArrayList<>(listHistory.size()); // лист для сохранения списка в обратном порядке
-            for (int i = listHistory.size() - 1; i >= 0; i--) {
-                reverse.add(listHistory.get(i));
+            /* Удалил отображение в обратном порядке, но всё равно не совсем понимаю:
+             отображение было реализовано аналогично отображению звонков в телефоне
+             т.е. последний вызов отображается первым - сейчас первым отображается первый вызов
+             */
+
             }
-            return reverse;
-        }
+
 
 
         public void remove(int id) {                // метод удаления по ID
@@ -77,12 +75,12 @@ public class InMemoryHistoryManager implements HistoryManager {
             customLinkedMap.remove(id);
         }
 
-        public void removeNode(Node<Task> node) { // метод принимает узел связного списка и вырезает его
+        public void removeNode(Node<T> node) { // метод принимает узел связного списка и вырезает его
 
             if (!(node == null)) {
                 if (customLinkedMap.containsKey(node.getTask().getId())) {
-                    Node<Task> prevNode = node.getPrev();
-                    Node<Task> nextNode = node.getNext();
+                    Node<T> prevNode = node.getPrev();
+                    Node<T> nextNode = node.getNext();
                     if (prevNode != null) {
                         prevNode.setNext(nextNode);
                     }
