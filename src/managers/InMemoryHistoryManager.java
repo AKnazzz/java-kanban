@@ -6,96 +6,115 @@ import java.util.*;
 
 public class InMemoryHistoryManager implements HistoryManager {
 
-    CustomLinkedList<Task> history = new CustomLinkedList<>();
+    private final Map<Integer, Node> customLinkedMap = new HashMap<>();
+    private Node head;
+    private Node tail;
+
 
     @Override
     public void add(Task task) {
-        if (history.customLinkedMap.containsKey(task.getId())) {
-            history.removeNode(history.customLinkedMap.get(task.getId()));
+        if (customLinkedMap.containsKey(task.getId())) {
+            removeNode(customLinkedMap.get(task.getId()));
         }
 
-        if (task == null) {
-            return;
-        } else {
-            history.linkLast(task);
-        }
+        linkLast(task);
     }
 
     @Override
     public List<Task> getHistory() {
-        return history.getTasks();
+        return getTasks();
+    }
+
+
+    public void linkLast(Task task) {                      // метод для добавления задачи в конец списка
+        final Node exTail = tail;
+        final Node newNode = new Node(task, exTail, null);
+        tail = newNode;
+
+        if (exTail == null) {
+            head = newNode;
+        } else {
+            exTail.setNext(newNode);
+        }
+        customLinkedMap.put(task.getId(), tail);
+    }
+
+    public List<Task> getTasks() {                       //  метод для сбора всех задачи в ArrayList
+        List<Task> listHistory = new ArrayList<>();
+        Node node = head;
+
+        while (node != null) {
+            listHistory.add(node.getTask());
+            node = node.getNext();
+        }
+
+        return listHistory;
+
     }
 
     @Override
-    public void remove(int id) {
-        history.remove(id);
+    public void remove(int id) {                // метод удаления по ID
+        removeNode(customLinkedMap.get(id));
+        customLinkedMap.remove(id);
     }
 
+    public void removeNode(Node node) { // метод принимает узел связного списка и вырезает его
 
-    public class CustomLinkedList<T extends Task> {   // список для хранения порядка вызовов метода add (в этом порядке просмотры будут выстраиваться в истории)
-        private final HashMap<Integer, Node<T>> customLinkedMap = new HashMap<>();
-        private Node<T> head;
-        private Node<T> tail;
+        if (!(node == null)) {
+            if (customLinkedMap.containsKey(node.getTask().getId())) {
+                Node prevNode = node.getPrev();
+                Node nextNode = node.getNext();
+                if (prevNode != null) {
+                    prevNode.setNext(nextNode);
+                }
+                if (nextNode != null) {
+                    nextNode.setPrev(prevNode);
+                }
+                customLinkedMap.remove(node.getTask().getId());
 
-
-        public void linkLast(Task task) {                      // метод для добавления задачи в конец списка
-            final Node<T> exTail = tail;
-            final Node<T> newNode = new Node<>(task, exTail, null);
-            tail = newNode;
-
-            if (exTail == null) {
-                head = newNode;
-            } else {
-                exTail.setNext(newNode);
-            }
-            customLinkedMap.put(task.getId(), tail);
-        }
-
-        public List<Task> getTasks() {                       //  метод для сбора всех задачи в ArrayList
-            List<Task> listHistory = new ArrayList<>();
-            Node<T> node = head;
-
-            while (node != null) {
-                listHistory.add(node.getTask());
-                node = node.getNext();
-            }
-              return listHistory;
-
-            /* Удалил отображение в обратном порядке, но всё равно не совсем понимаю:
-             отображение было реализовано аналогично отображению звонков в телефоне
-             т.е. последний вызов отображается первым - сейчас первым отображается первый вызов
-             */
-
-            }
-
-
-
-        public void remove(int id) {                // метод удаления по ID
-            removeNode(customLinkedMap.get(id));
-            customLinkedMap.remove(id);
-        }
-
-        public void removeNode(Node<T> node) { // метод принимает узел связного списка и вырезает его
-
-            if (!(node == null)) {
-                if (customLinkedMap.containsKey(node.getTask().getId())) {
-                    Node<T> prevNode = node.getPrev();
-                    Node<T> nextNode = node.getNext();
-                    if (prevNode != null) {
-                        prevNode.setNext(nextNode);
-                    }
-                    if (nextNode != null) {
-                        nextNode.setPrev(prevNode);
-                    }
-                    customLinkedMap.remove(node.getTask().getId());
-
-                    if (head == node) {
-                        head = nextNode;
-                    } else if (tail == node) {
-                        tail = prevNode;
-                    }
+                if (head == node) {
+                    head = nextNode;
+                } else if (tail == node) {
+                    tail = prevNode;
                 }
             }
         }
+    }
+
+}
+
+class Node {                                    // элемент-узел для двухсвязного списка
+    private Task data;
+    private Node prev;
+    private Node next;
+
+    public Node(Task data, Node prev, Node next) {
+        this.data = data;
+        this.prev = prev;
+        this.next = next;
+    }
+
+    public Task getTask() {
+        return data;
+    }
+
+    public void setTask(Task data) {
+        this.data = data;
+    }
+
+    public Node getNext() {
+        return next;
+    }
+
+    public void setNext(Node next) {
+        this.next = next;
+    }
+
+    public Node getPrev() {
+        return prev;
+    }
+
+    public void setPrev(Node prev) {
+        this.prev = prev;
     }
 }

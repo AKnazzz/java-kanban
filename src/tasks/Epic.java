@@ -9,6 +9,14 @@ public class Epic extends Task { // класс для комплексной з�
         super(id, name, description);
     }
 
+    public Epic(Integer id, String name, String description, StatusMarker status) {
+        super(id, name, description, status);
+    }
+
+    public Epic(String name, String description, StatusMarker status) {
+        super(name, description, status);
+    }
+
     public ArrayList<Subtask> getSubTasks() {
         return Subtasks;
     }
@@ -29,13 +37,8 @@ public class Epic extends Task { // класс для комплексной з�
 
     @Override
     public String toString() {
-        return "Epic{" +
-                "Subtasks=" + Subtasks +
-                ", name='" + name + '\'' +
-                ", description='" + description + '\'' +
-                ", id=" + id +
-                ", status='" + status + '\'' +
-                '}';
+        return  id + "," + TypeOfTasks.EPIC.name() + "," + name + "," + status + "," + description + ",";
+
     }
 
 }

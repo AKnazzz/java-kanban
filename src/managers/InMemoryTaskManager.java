@@ -6,23 +6,26 @@ import tasks.Task;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import static tasks.StatusMarker.*;
 
 
 public class InMemoryTaskManager implements TaskManager { // класс менеджер для описания логики работы с обычными задачами Task
-    protected HashMap<Integer, Task> tasks = new HashMap<>(); // мапа для хранения задач [ID] [Task]
-    protected HashMap<Integer, Epic> epics = new HashMap<>(); // мапа для хранения задач [ID] [Epic]
-    protected HashMap<Integer, Subtask> subtasks = new HashMap<>(); // мапа для хранения задач [ID] [subTask]
+
+    protected Map<Integer, Task> tasks = new HashMap<>(); // мапа для хранения задач [ID] [Task]
+    protected Map<Integer, Epic> epics = new HashMap<>(); // мапа для хранения задач [ID] [Epic]
+    protected Map<Integer, Subtask> subtasks = new HashMap<>(); // мапа для хранения задач [ID] [subTask]
     protected Integer taskID = 0;
 
-    public HistoryManager historyManager = Managers.getDefaultHistory();
+    protected HistoryManager historyManager = Managers.getDefaultHistory();
 
 
     //  методы для TASK = 6 шт
 
     @Override
-    public ArrayList<Task> getAllTasks() {                  // 1. метод для получения списка всех TASK
+    public List<Task> getAllTasks() {                  // 1. метод для получения списка всех TASK
         return new ArrayList<>(tasks.values());
     }
 
@@ -38,17 +41,12 @@ public class InMemoryTaskManager implements TaskManager { // класс мене
     }
 
     @Override
-    public Task createNewTask(Task task) {                    //  4. метод для создания новой задачи типа (TASK)
-        final Task newTask = new Task(++taskID, task.getName(), task.getDescription()); // используем конструктор со статусом NEW по умолчанию
-        int newTaskId = newTask.getId();
-        if (!tasks.containsKey(newTaskId))
-            tasks.put(newTaskId, newTask);
-        else {
-            System.out.println("Задача с таким номером (ID) уже есть в списке.");
-            return null;
-        }
-        return newTask;
+    public int createNewTask(Task task) {                    //  4. метод для создания новой задачи типа (TASK)
+        task.setId(++taskID);
+        tasks.put(task.getId(), task);
+        return task.getId();
     }
+
 
     @Override
     public Task updateTaskById(Task task) {            // 5. метод для обновления имени, описания и статуса (TASK) по (ID)
@@ -77,7 +75,7 @@ public class InMemoryTaskManager implements TaskManager { // класс мене
     //  методы для EPIC = 7 шт
 
     @Override
-    public ArrayList<Epic> getAllEpics() {              // 1. метод для получения списка всех сложных задач EPIC
+    public List<Epic> getAllEpics() {              // 1. метод для получения списка всех сложных задач EPIC
         return new ArrayList<>(epics.values());
     }
 
@@ -94,15 +92,10 @@ public class InMemoryTaskManager implements TaskManager { // класс мене
     }
 
     @Override
-    public Epic createNewEpic(Epic task) {             //    4.метод для создания новой сложной задачи (EPIC)
-        final Epic newTask = new Epic(++taskID, task.getName(), task.getDescription());
-        if (!epics.containsKey(newTask.getId())) {
-            epics.put(newTask.getId(), newTask);
-        } else {
-            System.out.println("Составная задача с этим номером ID уже есть в списке.");
-            return null;
-        }
-        return newTask;
+    public int createNewEpic(Epic epic) {             //    4.метод для создания новой сложной задачи (EPIC)
+        epic.setId(++taskID);
+        epics.put(epic.getId(), epic);
+        return epic.getId();
     }
 
     @Override
@@ -126,13 +119,14 @@ public class InMemoryTaskManager implements TaskManager { // класс мене
                 historyManager.remove(subtask.getId());
             }
         }
+
         historyManager.remove(id);
         epics.get(id).getSubTasks().clear();
         epics.remove(id);
     }
 
     @Override
-    public ArrayList<Subtask> findAllOfEpic(Epic epic) {     // 7. метод получения списка всех SUBTASK определённого Epic.
+    public List<Subtask> findAllOfEpic(Epic epic) {     // 7. метод получения списка всех SUBTASK определённого Epic.
         return epics.get(epic.getId()).getSubTasks();
     }
 
@@ -140,7 +134,7 @@ public class InMemoryTaskManager implements TaskManager { // класс мене
     //  методы для SUBTASK = 6 шт
 
     @Override
-    public ArrayList<Subtask> getAllSubtasks() {          // 1. метод для получения списка всех SUBTASK
+    public List<Subtask> getAllSubtasks() {          // 1. метод для получения списка всех SUBTASK
         return new ArrayList<>(subtasks.values());
     }
 
@@ -160,16 +154,11 @@ public class InMemoryTaskManager implements TaskManager { // класс мене
     }
 
     @Override
-    public Subtask crateNewSubTask(Subtask subTask, Epic epic) {         // 4. метод для создания подзадачи SUBTASK
-        final Subtask newSubtask = new Subtask(++taskID, subTask.getName(), subTask.getDescription(), epic.getId());
-        if (!subtasks.containsKey(newSubtask.getId())) {
-            subtasks.put(newSubtask.getId(), newSubtask);
-               epics.get(epic.getId()).getSubTasks().add(newSubtask);
-        } else {
-            System.out.println("Подзадача с таким номером ID уже есть в списке");
-            return null;
-        }
-        return newSubtask;
+    public int createNewSubTask(Subtask subTask) {         // 4. метод для создания подзадачи SUBTASK
+        subTask.setId(++taskID);
+        subtasks.put(subTask.getId(), subTask);
+        epics.get(subTask.getEpicID()).getSubTasks().add(subTask); // ?????
+        return subTask.getId();
     }
 
     @Override
@@ -232,8 +221,8 @@ public class InMemoryTaskManager implements TaskManager { // класс мене
 
     // Новый метод по возвращает ArrayList истории обращений
     @Override
-    public ArrayList<Task> history(){
-        return (ArrayList)historyManager.getHistory();
+    public List<Task> history() {
+        return historyManager.getHistory();
     }
 
 }

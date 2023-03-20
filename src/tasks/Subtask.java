@@ -8,6 +8,15 @@ public class Subtask extends Task { // класс для подзадачи, к�
         this.epicID = epicID;
     }
 
+    public Subtask(Integer id, String name, String description, StatusMarker status, Integer epicID) {
+        super(id, name, description, status);
+        this.epicID = epicID;
+    }
+
+    public Subtask(String name, String description, StatusMarker status, Integer epicID) {
+        super(name, description, status);
+        this.epicID = epicID;
+    }
 
     public Integer getEpicID() {
         return epicID;
@@ -32,13 +41,8 @@ public class Subtask extends Task { // класс для подзадачи, к�
 
     @Override
     public String toString() {
-        return "Subtask{" +
-                "epicID=" + epicID +
-                ", name='" + name + '\'' +
-                ", description='" + description + '\'' +
-                ", id=" + id +
-                ", status='" + status + '\'' +
-                '}';
+        return id + "," + TypeOfTasks.SUBTASK.name() + "," + name + "," + status + "," + description + "," + epicID + ",";
+
     }
 
 }

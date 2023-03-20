@@ -1,0 +1,9 @@
+1,TASK,Task 1,NEW,Описание 1,
+2,TASK,Task 2,NEW,Описание 2,
+3,EPIC,Новая задача типа Epic 1,NEW,Epic 1 у него три подзадачи,
+4,EPIC,Новая задача типа Epic 2,NEW,Epic 2 Без подзадач,
+5,SUBTASK,Подзадача типа subTask 1 к Epic 1,NEW,Описание subTask 1,3,
+6,SUBTASK,Подзадача типа subTask 2 к Epic 1,NEW,Описание subTask 2,3,
+7,SUBTASK,Подзадача типа subTask 3 к Epic 1,NEW,Описание subTask 3,3,
+
+5,3,4,7,1,6,2,

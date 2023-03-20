@@ -11,7 +11,6 @@ public interface HistoryManager {
 
     List<Task> getHistory();
 
-    void remove(int id);                    // добавлен новый метод согласно ТЗ
-
+    void remove(int id);
 
 }

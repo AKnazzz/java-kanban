@@ -23,6 +23,11 @@ public class Task { // класс стандартной задачи
         this.status = status;
     }
 
+    public Task(String name, String description, StatusMarker status) {
+        this.name = name;
+        this.description = description;
+        this.status = status;
+    }
 
     public String getName() {
         return name;
@@ -70,12 +75,11 @@ public class Task { // класс стандартной задачи
 
     @Override
     public String toString() {
-        return "Task{" +
-                "name='" + name + '\'' +
-                ", description='" + description + '\'' +
-                ", id=" + id +
-                ", status='" + status + '\'' +
-                '}';
+        return id + "," + TypeOfTasks.TASK.name() + "," + name + "," + status + "," + description + ",";
+
     }
 
+    public void setId(Integer id) {
+        this.id = id;
+    }
 }
