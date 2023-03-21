@@ -1,3 +1,4 @@
+id,type,name,status,description,epic
 1,TASK,Task 1,NEW,Описание 1,
 2,TASK,Task 2,NEW,Описание 2,
 3,EPIC,Новая задача типа Epic 1,NEW,Epic 1 у него три подзадачи,

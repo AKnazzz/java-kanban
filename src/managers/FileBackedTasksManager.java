@@ -1,6 +1,5 @@
 package managers;
 
-import exceptions.ManagerSaveException;
 import tasks.*;
 
 import java.io.*;
@@ -9,20 +8,11 @@ import java.util.List;
 
 public class FileBackedTasksManager extends InMemoryTaskManager {
 
-    private File file;
+    private final File file;
 
     public FileBackedTasksManager(File file) {
         this.file = file;
     }
-
-    public File getFile() {
-        return file;
-    }
-
-    public void setFile(File file) {
-        this.file = file;
-    }
-
 
     @Override
     public void deleteAllTasks() {
@@ -39,16 +29,16 @@ public class FileBackedTasksManager extends InMemoryTaskManager {
 
     @Override
     public int createNewTask(Task task) {
-        int a = super.createNewTask(task);
+        int id = super.createNewTask(task);
         save();
-        return a;
+        return id;
     }
 
     @Override
     public Task updateTaskById(Task task) {
-        Task task1 = super.updateTaskById(task);
+        Task newTask = super.updateTaskById(task);
         save();
-        return task1;
+        return newTask;
     }
 
     @Override
@@ -135,6 +125,7 @@ public class FileBackedTasksManager extends InMemoryTaskManager {
 
     private void save() {                                   // метод сохранения текущего состояние менеджера в файл
         try (FileWriter wr = new FileWriter(file)) {
+            wr.write("id,type,name,status,description,epic" + "\n");
 
             for (Task value : tasks.values()) {
                 wr.write(value.toString() + "\n");
@@ -151,7 +142,8 @@ public class FileBackedTasksManager extends InMemoryTaskManager {
             wr.write("\n" + historyToString(historyManager));
 
         } catch (IOException e) {
-            throw new ManagerSaveException("Что то пошло не так...");
+            throw new RuntimeException(e);
+          //  throw new ManagerSaveException("Что то пошло не так...");
         }
     }
 
@@ -205,12 +197,14 @@ public class FileBackedTasksManager extends InMemoryTaskManager {
             String input = bufferedReader.readLine();
             while (!input.isBlank()) {
                 Task task = fileBackedTasksManager.fromString(input);
-                if (task instanceof Epic) {
-                    fileBackedTasksManager.epics.put(task.getId(), (Epic) task);
-                } else if (task instanceof Subtask) {
-                    fileBackedTasksManager.subtasks.put(task.getId(), (Subtask) task);
-                } else if (task != null) {
-                    fileBackedTasksManager.tasks.put(task.getId(), task);
+                if (task != null) {
+                    if (task instanceof Epic) {
+                        fileBackedTasksManager.epics.put(task.getId(), (Epic) task);
+                    } else if (task instanceof Subtask) {
+                        fileBackedTasksManager.subtasks.put(task.getId(), (Subtask) task);
+                    } else {
+                        fileBackedTasksManager.tasks.put(task.getId(), task);
+                    }
                 }
                 input = bufferedReader.readLine();
             }
