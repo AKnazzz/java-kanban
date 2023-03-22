@@ -1,5 +1,6 @@
 package managers;
 
+import exceptions.ManagerSaveException;
 import tasks.*;
 
 import java.io.*;
@@ -142,8 +143,8 @@ public class FileBackedTasksManager extends InMemoryTaskManager {
             wr.write("\n" + historyToString(historyManager));
 
         } catch (IOException e) {
-            throw new RuntimeException(e);
-          //  throw new ManagerSaveException("Что то пошло не так...");
+           // throw new RuntimeException(e);
+           throw new ManagerSaveException("Can't read form file: " + file.getName(), e);
         }
     }
 
