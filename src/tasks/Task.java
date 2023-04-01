@@ -1,5 +1,9 @@
 package tasks;
+
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.Objects;
+
 import static tasks.StatusMarker.NEW;
 
 public class Task { // класс стандартной задачи
@@ -7,6 +11,8 @@ public class Task { // класс стандартной задачи
     protected String name; // имя задачи
     protected String description;  // описание к задаче
     protected StatusMarker status; // статус задачи
+    protected Duration duration;   // продолжительность задачи
+    protected LocalDateTime startTime; // время начала задачи
 
 
     public Task(Integer id, String name, String description) { // конструктор класса для новой задачи
@@ -28,6 +34,24 @@ public class Task { // класс стандартной задачи
         this.description = description;
         this.status = status;
     }
+
+    public Task(String name, String description, StatusMarker status, Duration duration, LocalDateTime startTime) {
+        this.name = name;
+        this.description = description;
+        this.status = status;
+        this.duration = duration;
+        this.startTime = startTime;
+    }
+
+    public Task(Integer id, String name, String description, StatusMarker status, Duration duration, LocalDateTime startTime) {
+        this.id = id;
+        this.name = name;
+        this.description = description;
+        this.status = status;
+        this.duration = duration;
+        this.startTime = startTime;
+    }
+
 
     public String getName() {
         return name;
@@ -57,6 +81,27 @@ public class Task { // класс стандартной задачи
         this.status = status;
     }
 
+    public LocalDateTime getEndTime() {
+        return startTime.plus(duration);
+    }
+
+    public void setDuration(Duration duration) {
+        this.duration = duration;
+    }
+
+    public void setStartTime(LocalDateTime startTime) {
+        this.startTime = startTime;
+    }
+
+
+    public Duration getDuration() {
+        return duration;
+    }
+
+    public LocalDateTime getStartTime() {
+        return startTime;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -73,13 +118,16 @@ public class Task { // класс стандартной задачи
         return Objects.hash(getName(), getDescription(), getId(), getStatus());
     }
 
+
     @Override
     public String toString() {
-        return id + "," + TypeOfTasks.TASK.name() + "," + name + "," + status + "," + description + ",";
+        return id + "," + TypeOfTasks.TASK.name() + "," + name + "," + status + "," + description + "," + "null" + "," + startTime + "," + duration + "," + startTime.plus(duration);
 
     }
 
     public void setId(Integer id) {
         this.id = id;
     }
+
+
 }

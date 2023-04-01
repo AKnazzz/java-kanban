@@ -1,11 +1,16 @@
 package tasks;
+
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Objects;
 
 public class Epic extends Task { // класс для комплексной задач типа Epic
-    protected ArrayList<Subtask> Subtasks = new ArrayList<>(); // список для подзадач типа Subtask
+    protected final ArrayList<Subtask> Subtasks = new ArrayList<>(); // список для подзадач типа Subtask
 
-    public Epic(Integer id , String name, String description) {
+    protected LocalDateTime endTime;
+
+    public Epic(Integer id, String name, String description) {
         super(id, name, description);
     }
 
@@ -17,8 +22,27 @@ public class Epic extends Task { // класс для комплексной з�
         super(name, description, status);
     }
 
+    public Epic(String name, String description, StatusMarker status, Duration duration, LocalDateTime startTime, LocalDateTime endTime) {
+        super(name, description, status, duration, startTime);
+        this.endTime = endTime;
+    }
+
+    public Epic(Integer id, String name, String description, StatusMarker status, Duration duration, LocalDateTime startTime, LocalDateTime endTime) {
+        super(id, name, description, status, duration, startTime);
+        this.endTime = endTime;
+    }
+
+    public Epic(String name, String description, StatusMarker status, Duration duration, LocalDateTime startTime) {
+        super(name, description, status, duration, startTime);
+    }
+
     public ArrayList<Subtask> getSubTasks() {
         return Subtasks;
+    }
+
+
+    public void setEndTime(LocalDateTime endTime) {
+        this.endTime = endTime;
     }
 
     @Override
@@ -37,7 +61,7 @@ public class Epic extends Task { // класс для комплексной з�
 
     @Override
     public String toString() {
-        return  id + "," + TypeOfTasks.EPIC.name() + "," + name + "," + status + "," + description + ",";
+        return id + "," + TypeOfTasks.EPIC.name() + "," + name + "," + status + "," + description + "," + "null" + "," + startTime + "," + duration + "," + endTime + ",";
 
     }
 

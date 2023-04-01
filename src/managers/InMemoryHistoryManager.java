@@ -13,6 +13,10 @@ public class InMemoryHistoryManager implements HistoryManager {
 
     @Override
     public void add(Task task) {
+        if (task == null){
+            return;
+        }
+
         if (customLinkedMap.containsKey(task.getId())) {
             removeNode(customLinkedMap.get(task.getId()));
         }
@@ -74,7 +78,8 @@ public class InMemoryHistoryManager implements HistoryManager {
 
                 if (head == node) {
                     head = nextNode;
-                } else if (tail == node) {
+                }
+                if (tail == node) {
                     tail = prevNode;
                 }
             }

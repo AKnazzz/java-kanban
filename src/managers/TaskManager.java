@@ -5,6 +5,7 @@ import tasks.Subtask;
 import tasks.Task;
 
 import java.util.List;
+import java.util.TreeSet;
 
 public interface TaskManager {
 
@@ -35,7 +36,7 @@ public interface TaskManager {
 
     void deleteEpicById(Integer id);      // 6. метод для удаления сложной задачи EPIC по номеру.
 
-    List<Subtask> findAllOfEpic(Epic epic);   // 7. метод получения списка всех SUBTASK определённого Epic.
+    List<Subtask> getEpicSubtasks(Epic epic);   // 7. метод получения списка всех SUBTASK определённого Epic.
 
 
     //  методы для SUBTASK = 6 шт
@@ -51,11 +52,16 @@ public interface TaskManager {
 
     Subtask updateSubTaskById(Subtask task);                // 5-1. метод для обновления Subtask по номеру ID
 
-    void setNewStatus(Subtask task);        // 5-2. метод обновления статуса Epic в зависимости от статуса подзадач
+    void updateEpicStatus(int id);        // 5-2. метод обновления статуса Epic в зависимости от статуса подзадач
 
     Subtask deleteSubTaskById(Integer id);  // 6. метод для удаления SUBTASK по идентификатору ID.
 
 
     List<Task> history(); //Возвращает последние 10 просмотренных задач.
 
+    TreeSet<Task> getPrioritizedTasks();
+
+    boolean timeNotBusy(Task task);
+
+    public void clearAll();
 }
