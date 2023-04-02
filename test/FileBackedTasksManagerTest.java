@@ -2,6 +2,7 @@ import managers.FileBackedTasksManager;
 import managers.TaskManager;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import tasks.Epic;
 import tasks.StatusMarker;
@@ -23,6 +24,7 @@ public class FileBackedTasksManagerTest extends TaskManagerTest<FileBackedTasksM
 
     // тестируются все ПУБЛИЧНЫЕ методы
 
+    @DisplayName("Проверка что файл пустой при пустом списке задач")
     @Test
     public void saveFileShouldBeEmptyWhenNoTasks() {
         try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
@@ -33,12 +35,13 @@ public class FileBackedTasksManagerTest extends TaskManagerTest<FileBackedTasksM
                 result.append(reader.readLine());
             }
 
-            Assertions.assertEquals(expected, result.toString(), "Ожидался пустой файл без задач, вернулся не такой");
+            Assertions.assertEquals(expected, result.toString(), "Ожидался пустой файл без задач");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
+    @DisplayName("Проверка записи эпика без подзадач")
     @Test
     public void saveShouldSaveEpicWithoutSubtasks() {
         Epic epic = new Epic("Эпик 1", "описание", StatusMarker.NEW, null, null, null);
@@ -52,12 +55,13 @@ public class FileBackedTasksManagerTest extends TaskManagerTest<FileBackedTasksM
                 result.append(reader.readLine());
             }
 
-            Assertions.assertEquals(expected, result.toString(), "Ожидался файл с один эпиком, вернулся не такой");
+            Assertions.assertEquals(expected, result.toString(), "Ожидался файл с один эпиком");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
+    @DisplayName("Проверка записи при пустом списке истории")
     @Test
     public void saveShouldSaveTasksWithoutHistory() {
         Subtask subtask = new Subtask("Сабтаск 1", "описание", StatusMarker.NEW, Duration.ofMinutes(60),
@@ -77,9 +81,9 @@ public class FileBackedTasksManagerTest extends TaskManagerTest<FileBackedTasksM
             String expected2 = reader.readLine();
             String expected3 = reader.readLine();
 
-            Assertions.assertEquals(expected1, task.toString(), "Ожидалась строка с task без истории, вернулся не такая");
-            Assertions.assertEquals(expected2, epic.toString(), "Ожидалась строка с epic без истории, вернулся не такая");
-            Assertions.assertEquals(expected3, subtask.toString(), "Ожидалась строка с subtask без истории, вернулся не такая");
+            Assertions.assertEquals(expected1, task.toString(), "Ожидалась строка с task без истории");
+            Assertions.assertEquals(expected2, epic.toString(), "Ожидалась строка с epic без истории");
+            Assertions.assertEquals(expected3, subtask.toString(), "Ожидалась строка с subtask без истории");
 
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -87,17 +91,19 @@ public class FileBackedTasksManagerTest extends TaskManagerTest<FileBackedTasksM
 
     }
 
+    @DisplayName("Проверка выгрузке при пустом списке задач")
     @Test
     public void loadFromFileShouldCreateManagerWithoutTasksWhenFileIsEmpty() {
         taskManager.clearAll();
         TaskManager fileBacked = FileBackedTasksManager.loadFromFile(file);
 
-        Assertions.assertTrue(fileBacked.getAllTasks().isEmpty(), "Ожидался пустой список task, вернулся не такой");
-        Assertions.assertTrue(fileBacked.getAllEpics().isEmpty(), "Ожидался пустой список epic, вернулся не такой");
-        Assertions.assertTrue(fileBacked.getAllSubtasks().isEmpty(), "Ожидался пустой список subtask, вернулся не такой");
-        Assertions.assertTrue(fileBacked.getPrioritizedTasks().isEmpty(), "Ожидался пустой список сортированных задач, вернулся не такой");
+        Assertions.assertTrue(fileBacked.getAllTasks().isEmpty(), "Ожидался пустой список task");
+        Assertions.assertTrue(fileBacked.getAllEpics().isEmpty(), "Ожидался пустой список epic");
+        Assertions.assertTrue(fileBacked.getAllSubtasks().isEmpty(), "Ожидался пустой список subtask");
+        Assertions.assertTrue(fileBacked.getPrioritizedTasks().isEmpty(), "Ожидался пустой список сортированных задач");
     }
 
+    @DisplayName("Проверка выгрузки эпика без подзадач")
     @Test
     public void loadFromFileShouldReturnManagerWithEpic() {
         Epic epic = new Epic("Эпик 1", "описание", StatusMarker.NEW, null, null, null);
@@ -108,12 +114,13 @@ public class FileBackedTasksManagerTest extends TaskManagerTest<FileBackedTasksM
         Task [] tasks = {epic};
         Task [] history = {epic};
 
-        Assertions.assertArrayEquals(history, fileBackedTasksManager.history().toArray(), "Ожидался список (история), вернулся не такой");
-        Assertions.assertArrayEquals(tasks, fileBackedTasksManager.getAllEpics().toArray(), "Ожидался список epic, вернулся не такой");
-        Assertions.assertTrue(fileBackedTasksManager.getAllTasks().isEmpty(), "Ожидался пустой список задач, вернулся не такой");
-        Assertions.assertTrue(fileBackedTasksManager.getAllSubtasks().isEmpty(), "Ожидался пустой список подзадач, вернулся не такой");
+        Assertions.assertArrayEquals(history, fileBackedTasksManager.history().toArray(), "Ожидался список (история)");
+        Assertions.assertArrayEquals(tasks, fileBackedTasksManager.getAllEpics().toArray(), "Ожидался список epic");
+        Assertions.assertTrue(fileBackedTasksManager.getAllTasks().isEmpty(), "Ожидался пустой список задач");
+        Assertions.assertTrue(fileBackedTasksManager.getAllSubtasks().isEmpty(), "Ожидался пустой список подзадач");
     }
 
+    @DisplayName("Проверка выгрузки при пустом списке истории")
     @Test
     public void loadFromFileShouldReturnManagerWithEmptyHistory() {
         Subtask subtask = new Subtask("Сабтаск 1", "описание", StatusMarker.NEW, Duration.ofMinutes(60),
@@ -127,7 +134,7 @@ public class FileBackedTasksManagerTest extends TaskManagerTest<FileBackedTasksM
         taskManager.createNewSubTask(subtask);
         FileBackedTasksManager fileBackedTasksManager = FileBackedTasksManager.loadFromFile(file);
 
-        Assertions.assertTrue(fileBackedTasksManager.history().isEmpty(), "Ожидался пустой список, вернулся не такой");
+        Assertions.assertTrue(fileBackedTasksManager.history().isEmpty(), "Ожидался пустой список");
     }
 
 }

@@ -16,10 +16,8 @@ public class InMemoryTaskManager implements TaskManager { // класс мене
     protected Map<Integer, Task> tasks = new HashMap<>(); // мапа для хранения задач [ID] [Task]
     protected Map<Integer, Epic> epics = new HashMap<>(); // мапа для хранения задач [ID] [Epic]
     protected Map<Integer, Subtask> subtasks = new HashMap<>(); // мапа для хранения задач [ID] [subTask]
-    protected final TreeSet<Task> prioritizedTasks = new TreeSet<>(
-            Comparator.comparing(Task::getStartTime,
-                    Comparator.nullsLast(Comparator.naturalOrder())).thenComparingInt(Task::getId)
-    );
+    protected final TreeSet<Task> prioritizedTasks = new TreeSet<>(Comparator.comparing(Task::getStartTime));
+
 
     protected Integer taskID = 0;
     protected HistoryManager historyManager = Managers.getDefaultHistory();
@@ -316,9 +314,6 @@ public class InMemoryTaskManager implements TaskManager { // класс мене
             return;
         }
 
-
-        final Duration duration = Duration.ofMinutes(0);
-
         LocalDateTime startTime = epicSubtasks.stream().min(Comparator.comparing((x) -> x.getStartTime())).get().getStartTime();
         epic.setStartTime(startTime);
 
@@ -338,6 +333,17 @@ public class InMemoryTaskManager implements TaskManager { // класс мене
     }
 
     public boolean timeNotBusy(Task task) {
+
+        return prioritizedTasks.stream()
+                .filter(t -> t.getStartTime() != null && t.getDuration() != null)
+                .noneMatch(t -> (t.getStartTime().isBefore(task.getStartTime()) && t.getEndTime().isAfter(task.getStartTime()) ||
+                        t.getStartTime().isBefore(task.getEndTime()) && t.getEndTime().isAfter(task.getEndTime())) ||
+                        task.getStartTime().isBefore(t.getStartTime()) && task.getEndTime().isAfter(t.getEndTime()) ||
+                        task.getStartTime().isEqual(t.getStartTime()) || task.getEndTime().isEqual(t.getEndTime()));
+
+    }
+
+/*    public boolean timeNotBusy(Task task) {
         for (Task taskInManager : prioritizedTasks) {
             if (!(taskInManager.getStartTime() == null && taskInManager.getDuration() == null)) {
                 if (taskInManager.getStartTime().isBefore(task.getStartTime()) &&
@@ -359,6 +365,6 @@ public class InMemoryTaskManager implements TaskManager { // класс мене
             }
         }
         return true;
-    }
+    }*/
 
 }
