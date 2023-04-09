@@ -1,650 +1,942 @@
-import managers.TaskManager;
+import com.google.gson.*;
+import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.function.Executable;
 
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
 
-import tasks.Epic;
-import tasks.StatusMarker;
-import tasks.Subtask;
-import tasks.Task;
+import tracker.managers.*;
+import tracker.exceptions.AddTaskException;
+import tracker.tasks.Epic;
+import tracker.tasks.Subtask;
+import tracker.tasks.Task;
+import tracker.util.Managers;
 
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
+import static tracker.tasks.Status.*;
 
 public abstract class TaskManagerTest<T extends TaskManager> {
-    protected TaskManager taskManager;
-    protected Epic epic;
-    protected Task task;
-    protected Subtask subtask;
 
-    //аннотацию @BeforeEach не задействую т.к. это не требуется во всех тестах
-    public void setupTasks() { // метод для тестирования используется для создания объектов ()
+    T taskManager;
+    static KVServer kvServer;
+    HttpTaskServer taskServer;
 
-        subtask = new Subtask("Сабтаск 1", "описание", StatusMarker.NEW, Duration.ofMinutes(60),
-                LocalDateTime.of(2023, 4, 1, 10, 0), 0);
-        epic = new Epic("Эпик 1", "описание", StatusMarker.NEW, null, null, null);
-        task = new Task("задача 1", "описание 1", StatusMarker.NEW, Duration.ofMinutes(500),
-                LocalDateTime.of(2023, 4, 12, 10, 0));
+    public TaskManagerTest(T taskManager) {
+        this.taskManager = taskManager;
     }
 
-    // тестируются все ПУБЛИЧНЫЕ методы
-    @DisplayName("Проверка метода получения всех задач при их отсутствии (TASKS)")
-    @Test
-    public void getAllTasksShouldReturnEmptyListWhenNoTasksInside() {
+    @BeforeAll
+    public static void beforeAll() {
+        try {
+            kvServer = new KVServer();
+            kvServer.start();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
-        Assertions.assertTrue(taskManager.getAllTasks().isEmpty(), "Ожидался пустой список");
     }
 
-    @DisplayName("Проверка получения всех созданных TASK")
-    @Test
-    public void getAllTasksShouldReturnListOfTasksWhenTasksInside() {
-        setupTasks();
-        taskManager.createNewTask(task);
-        Task task2 = new Task("задача 2", "описание 2", StatusMarker.NEW, Duration.ofMinutes(500),
-                LocalDateTime.of(2023, 4, 13, 10, 0));
-        taskManager.createNewTask(task2);
-        Task[] tasks = {task, task2};
-
-        Assertions.assertArrayEquals(tasks, taskManager.getAllTasks().toArray(), "Ожидался список");
-    }
-
-    @DisplayName("Проверка метода получения всех задач при их отсутствии (EPICS)")
-    @Test
-    public void getAllEpicsShouldReturnEmptyListWhenNoTasksInside() {
-
-        Assertions.assertTrue(taskManager.getAllEpics().isEmpty(), "Ожидался пустой список");
-    }
-
-    @DisplayName("Проверка получения всех созданных EPICS")
-    @Test
-    public void getAllEpicsShouldReturnListOfTasksWhenTasksInside() {
-        setupTasks();
-        taskManager.createNewEpic(epic);
-        Epic epic2 = new Epic("Эпик 2", "описание", StatusMarker.NEW, null, null, null);
-        taskManager.createNewEpic(epic2);
-        Epic[] epics = {epic, epic2};
-
-        Assertions.assertArrayEquals(epics, taskManager.getAllEpics().toArray(), "Ожидался список");
-    }
-
-    @DisplayName("Проверка метода получения всех задач при их отсутствии (SUBTASKS)")
-    @Test
-    public void getAllSubTasksShouldReturnEmptyListWhenNoTasksInside() {
-
-        Assertions.assertTrue(taskManager.getAllSubtasks().isEmpty(), "Ожидался пустой список");
-    }
-
-    @DisplayName("Проверка получения всех созданных SUBTASK")
-    @Test
-    public void getAllSubTasksShouldReturnListOfTasksWhenTasksInside() {
-        setupTasks();
-        taskManager.createNewEpic(epic);
-        subtask.setEpicID(epic.getId());
-        taskManager.createNewSubTask(subtask);
-        Subtask subtask2 = new Subtask("Сабтаск 2", "описание", StatusMarker.NEW, Duration.ofMinutes(60),
-                LocalDateTime.of(2023, 4, 2, 10, 0), epic.getId());
-        taskManager.createNewSubTask(subtask2);
-        Subtask[] subTasks = {subtask, subtask2};
-
-        Assertions.assertArrayEquals(subTasks, taskManager.getAllSubtasks().toArray(), "Ожидался список");
-    }
-
-    @DisplayName("Проверка удаления всех созданных TASK")
-    @Test
-    public void deleteAllTasksShouldDeleteAllTasksFromMapTasksAndPrioritizedTasks() {
-        setupTasks();
-        taskManager.createNewTask(task);
-        Task task2 = new Task("задача 2", "описание 2", StatusMarker.NEW, Duration.ofMinutes(500),
-                LocalDateTime.of(2023, 4, 13, 10, 0));
-        taskManager.createNewTask(task2);
-        taskManager.deleteAllTasks();
-
-        Assertions.assertTrue(taskManager.getAllTasks().isEmpty(), "Ожидался пустой лист задач");
-        Assertions.assertTrue(taskManager.getPrioritizedTasks().isEmpty(), "Ожидался пустой лист сортированных задач");
-    }
-
-    @DisplayName("Проверка удаления всех созданных SUBTASK")
-    @Test
-    public void deleteAllSubTasksShouldDeleteAllTasksFromMapTasksAndAllSubTasksPrioritizedTasks() {
-        setupTasks();
-        taskManager.createNewEpic(epic);
-        subtask.setEpicID(epic.getId());
-        taskManager.createNewSubTask(subtask);
-        Subtask subtask2 = new Subtask("Сабтаск 2", "описание", StatusMarker.NEW, Duration.ofMinutes(60),
-                LocalDateTime.of(2023, 4, 2, 10, 0), epic.getId());
-        taskManager.createNewSubTask(subtask2);
-        taskManager.deleteAllSubTasks();
-
-        Assertions.assertTrue(taskManager.getAllSubtasks().isEmpty(), "Ожидался пустой лист задач");
-        Assertions.assertTrue(taskManager.getPrioritizedTasks().isEmpty(), "Ожидался пустой лист сортированных задач");
-    }
-
-    @DisplayName("Проверка удаления всех созданных EPICS")
-    @Test
-    public void deleteAllEpicsShouldDeleteAllTasksFromMapTasksAndAllSubTasksPrioritizedTasks() {
-        setupTasks();
-        taskManager.createNewEpic(epic);
-        Epic epic2 = new Epic("Эпик 2", "описание", StatusMarker.NEW, null, null, null);
-        taskManager.createNewEpic(epic2);
-        subtask.setEpicID(epic.getId());
-        taskManager.createNewSubTask(subtask);
-        Subtask subtask2 = new Subtask("Сабтаск 2", "описание", StatusMarker.NEW, Duration.ofMinutes(60),
-                LocalDateTime.of(2023, 4, 2, 10, 0), epic.getId());
-        taskManager.createNewSubTask(subtask2);
-        taskManager.deleteAllEpics();
-
-        Assertions.assertTrue(taskManager.getAllSubtasks().isEmpty(), "Ожидался пустой лист задач");
-        Assertions.assertTrue(taskManager.getAllEpics().isEmpty(), "Ожидался пустой лист задач");
-        Assertions.assertTrue(taskManager.getPrioritizedTasks().isEmpty(), "Ожидался пустой лист задач");
-    }
-
-    @DisplayName("Проверка получения TASK при её наличии")
-    @Test
-    public void getTaskByIdShouldReturnTaskIfItExist() {
-        setupTasks();
-        taskManager.createNewTask(task);
-        taskManager.getTaskById(task.getId());
-
-        Assertions.assertEquals(task, taskManager.getTaskById(task.getId()), "Ожидалась задача с конкретным ID");
-    }
-
-    @DisplayName("Проверка получения TASK при её отсутствии")
-    @Test
-    public void getTaskByIdShouldReturnNullTaskWhenItNotExist() {
-
-        Assertions.assertNull(taskManager.getTaskById(0), "Ожидался null (отсутствие задачи)");
-    }
-
-    @DisplayName("Проверка получения SUBTASK при её наличии")
-    @Test
-    public void getSubTaskByIdShouldReturnSubTaskIfItExist() {
-        setupTasks();
-        taskManager.createNewEpic(epic);
-        subtask.setEpicID(epic.getId());
-        taskManager.createNewSubTask(subtask);
-        taskManager.getSubtaskById(subtask.getId());
-
-        Assertions.assertEquals(subtask, taskManager.getSubtaskById(subtask.getId()), "Ожидалась задача с конкретным ID");
-    }
-
-    @DisplayName("Проверка получения SUBTASK при её отсутствии")
-    @Test
-    public void getSubTaskByIdShouldReturnNullTaskWhenItNotExist() {
-
-        Assertions.assertNull(taskManager.getSubtaskById(0), "Ожидался null (отсутствие задачи)");
-    }
-
-    @DisplayName("Проверка получения EPIC при её наличии")
-    @Test
-    public void getEpicByIdShouldReturnTaskIfItExist() {
-        setupTasks();
-        taskManager.createNewEpic(epic);
-        taskManager.getEpicById(epic.getId());
-
-        Assertions.assertEquals(epic, taskManager.getEpicById(epic.getId()), "Ожидалась задача с конкретным ID");
-    }
-
-    @DisplayName("Проверка получения SUBTASK при её отсутствии")
-    @Test
-    public void getEpicByIdShouldReturnNullTaskWhenItNotExist() {
-
-        Assertions.assertNull(taskManager.getEpicById(0), "Ожидался null (отсутствие задачи)");
-        Assertions.assertNull(taskManager.getEpicById(0), "Ожидался null (отсутствие задачи)");
-    }
-
-    @DisplayName("Проверка создания TASK при её корректности")
-    @Test
-    public void createNewTaskShouldReturnIDWhenTaskValid() {
-        setupTasks();
-        Assertions.assertEquals(1, taskManager.createNewTask(task), "Ожидался ID = 1");
-    }
-
-    @DisplayName("Проверка создания TASK при её отсутствии (объекта)")
-    @Test
-    public void createNewTaskShouldReturnNegativeIDTaskNotValid() {
-
-        Assertions.assertEquals(-1, taskManager.createNewTask(task), "Ожидался ID = - 1");
-    }
-
-    @DisplayName("Проверка создания TASK при пересечении по времени задачи")
-    @Test
-    public void createNewTaskShouldReturnNegativeIDWhenTaskInterseption() {
-        setupTasks();
-        taskManager.createNewTask(task);
-        Task task2 = new Task("задача 2", "описание 2", StatusMarker.NEW, Duration.ofMinutes(500),
-                LocalDateTime.of(2023, 4, 12, 10, 00));
-
-        Assertions.assertEquals(-1, taskManager.createNewTask(task2), "Ожидался ID = - 1");
-    }
-
-    @DisplayName("Проверка создания EPIC при её корректности")
-    @Test
-    public void createNewEpicShouldReturnIDWhenTaskValid() {
-        setupTasks();
-
-        Assertions.assertEquals(1, taskManager.createNewEpic(epic), "Ожидался ID = 1");
-    }
-
-    @DisplayName("Проверка создания EPIC при её отсутствии (объекта)")
-    @Test
-    public void createNewEpicShouldReturnNegativeIDTaskNotValid() {
-
-        Assertions.assertEquals(-1, taskManager.createNewEpic(epic), "Ожидался ID = 1");
-    }
-
-    @DisplayName("Проверка создания SUBTASK при её корректности")
-    @Test
-    public void createNewSubTaskShouldReturnIDWhenTaskValid() {
-        setupTasks();
-        taskManager.createNewEpic(epic);
-        subtask.setEpicID(epic.getId());
-
-        Assertions.assertEquals(2, taskManager.createNewSubTask(subtask), "Ожидался ID = 2");
-    }
-
-    @DisplayName("Проверка создания SUBTASK при её отсутствии (объекта)")
-    @Test
-    public void createNewSubTaskShouldReturnNegativeIDTaskNotValid() {
-
-        Assertions.assertEquals(-1, taskManager.createNewSubTask(subtask), "Ожидался ID = - 1");
-    }
-
-    @DisplayName("Проверка создания SUBTASK при пересечении по времени задачи")
-    @Test
-    public void createNewSubTaskShouldReturnNegativeIDWhenTaskInterseption() {
-        setupTasks();
-        taskManager.createNewEpic(epic);
-        subtask.setEpicID(epic.getId());
-        taskManager.createNewSubTask(subtask);
-        Subtask subtask2 = new Subtask("Сабтаск 1", "описание", StatusMarker.NEW, Duration.ofMinutes(60),
-                LocalDateTime.of(2023, 4, 1, 10, 0), 0);
-
-        Assertions.assertEquals(-1, taskManager.createNewTask(subtask2), "Ожидался ID = - 1");
-    }
-
-    @DisplayName("Проверка обновления TASK ")
-    @Test
-    public void updateTaskByIdShouldReturnUpdatedTask() {
-        setupTasks();
-        taskManager.createNewTask(task);
-        Task task2 = new Task(1, "задача 2", "описание 2", StatusMarker.NEW, Duration.ofMinutes(600),
-                LocalDateTime.of(2023, 5, 14, 10, 00));
-
-        Assertions.assertEquals(task2, taskManager.updateTaskById(task2), "Ожидалась обновлённая task");
-    }
-
-    @DisplayName("Проверка обновления TASK при пересечении по времени")
-    @Test
-    public void updateTaskByIdShouldReturnOldTaskIfUpdatedTaskIsDurationByTime() {
-        setupTasks();
-        taskManager.createNewTask(task);
-        Task task3 = new Task("задача 3", "описание 2", StatusMarker.NEW, Duration.ofMinutes(500),
-                LocalDateTime.of(2023, 5, 12, 10, 0));
-        taskManager.createNewTask(task3);
-        Task task2 = new Task(1, "задача 1", "описание 1", StatusMarker.NEW, Duration.ofMinutes(500),
-                LocalDateTime.of(2023, 5, 12, 10, 0));
-
-        Assertions.assertEquals(task, taskManager.updateTaskById(task2), "Ожидалась обновлённая задача");
-    }
-
-    @DisplayName("Проверка обновления TASK при её некорректности")
-    @Test
-    public void updateTaskByIdShouldReturnOldTaskIfUndatedTaskIsNotCorrect() {
-        setupTasks();
-        taskManager.createNewTask(task);
-        Task task2 = new Task(5, "задача 1", "описание 1", StatusMarker.NEW, Duration.ofMinutes(500),
-                LocalDateTime.of(2023, 5, 12, 10, 0));
-
-        Assertions.assertNull(taskManager.updateTaskById(task2), "Ожидался null (некорректный ID задачи)");
-    }
-
-    @DisplayName("Проверка обновления ЭПИКА ")
-    @Test
-    public void updateEpicByIdShouldReturnUpdatedTask() {
-        setupTasks();
-        taskManager.createNewEpic(epic);
-        Epic epic2 = new Epic(1, "Эпик 2222", "описание 222", StatusMarker.NEW, null, null, null);
-
-        Assertions.assertEquals(epic2, taskManager.updateEpic(epic2), "Ожидалась обновлённая задача");
-    }
-
-    @DisplayName("Проверка обновления ЭПИКА при его некорректности ")
-    @Test
-    public void updateEpicByIdShouldReturnOldTaskIfUpdatedTaskIsNotCorrect() {
-        setupTasks();
-        taskManager.createNewEpic(epic);
-        Epic epic2 = new Epic(5, "Эпик 2222", "описание 222", StatusMarker.NEW, null, null, null);
-
-        Assertions.assertNull(taskManager.updateEpic(epic2), "Ожидался null (некорректный ID задачи)");
-    }
-
-    @DisplayName("Проверка обновления SUBTASK ")
-    @Test
-    public void updateSubTasksByIdShouldReturnUpdatedTask() {
-        setupTasks();
-        taskManager.createNewEpic(epic);
-        subtask.setEpicID(epic.getId());
-        taskManager.createNewSubTask(subtask);
-        Subtask subtask2 = new Subtask(2, "Сабтаск 1", "описание", StatusMarker.NEW,
-                Duration.ofMinutes(60), LocalDateTime.of(2023, 4, 1, 10, 0), epic.getId());
-
-        Assertions.assertEquals(subtask2, taskManager.updateSubTaskById(subtask2), "Ожидалась обновлённая задача");
-    }
-
-    @DisplayName("Проверка обновления SUBTASK при пересечении по времени")
-    @Test
-    public void updateSubTaskByIdShouldReturnOldTaskIfUpdatedTaskHasIntersection() {
-        setupTasks();
-        taskManager.createNewEpic(epic);
-        subtask.setEpicID(epic.getId());
-        taskManager.createNewSubTask(subtask);
-        Subtask subtask3 = new Subtask("Сабтаск 1", "описание", StatusMarker.NEW, Duration.ofMinutes(60),
-                LocalDateTime.of(2023, 5, 1, 10, 0), epic.getId());
-        taskManager.createNewSubTask(subtask3);
-        Subtask subtask2 = new Subtask(subtask.getId(), "Сабтаск 1", "описание", StatusMarker.NEW,
-                Duration.ofMinutes(60), LocalDateTime.of(2023, 5, 1, 10, 0), epic.getId());
-
-        Assertions.assertEquals(subtask, taskManager.updateSubTaskById(subtask2), "Ожидалась старая задача " +
-                "(т.к. пересечение по времени)");
-    }
-
-    @DisplayName("Проверка удаления TASK ")
-    @Test
-    public void deleteTaskByIdShouldDeleteTaskFromMapAndPrioritizedTasks() {
-        setupTasks();
-        int id = taskManager.createNewTask(task);
-        taskManager.deleteTaskById(id);
-
-        Assertions.assertNull(taskManager.getTaskById(id), "Ожидался null (отсутствие задачи)");
-        Assertions.assertTrue(taskManager.getAllTasks().isEmpty(), "Ожидался TRUE - пустой список"); // добавлено
-        Assertions.assertFalse(taskManager.getPrioritizedTasks().contains(task), "Ожидалась false (отсутствие задачи)");
-        Assertions.assertTrue(taskManager.getPrioritizedTasks().isEmpty(), "Ожидался TRUE - пустой список"); // добавлено
-    }
-
-    @DisplayName("Проверка удаления TASK из истории")
-    @Test
-    public void deleteTaskByIdShouldDeleteTaskFromHistory() {
-        setupTasks();
-        int id = taskManager.createNewTask(task);
-        taskManager.getTaskById(id);
-        taskManager.deleteTaskById(id);
-
-        Assertions.assertFalse(taskManager.history().contains(task), "Ожидалась false(отсутствие задачи)");
-    }
-
-    @DisplayName("Проверка удаления SUBTASK")
-    @Test
-    public void deleteSubTaskByIdShouldDeleteTaskFromMapAndPrioritizedTasks() {
-        setupTasks();
-        taskManager.createNewEpic(epic);
-        subtask.setEpicID(epic.getId());
-        int id = taskManager.createNewSubTask(subtask);
-        taskManager.deleteSubTaskById(id);
-
-        Assertions.assertNull(taskManager.getSubtaskById(id), "Ожидался null (отсутствие задачи)");
-        Assertions.assertFalse(taskManager.getPrioritizedTasks().contains(subtask), "Ожидалась false (отсутствие задачи)");
-        Assertions.assertFalse(epic.getSubTasks().contains(subtask), "Ожидалась false (отсутствие задачи)");
-    }
-
-    @DisplayName("Проверка удаления SUBTASK из истории")
-    @Test
-    public void deleteSubTaskByIdShouldDeleteTaskFromHistory() {
-        setupTasks();
-        taskManager.createNewEpic(epic);
-        subtask.setEpicID(epic.getId());
-        int id = taskManager.createNewSubTask(subtask);
-        taskManager.getSubtaskById(id);
-        taskManager.deleteSubTaskById(id);
-
-        Assertions.assertFalse(taskManager.history().contains(subtask), "Ожидалась false (отсутствие задачи)");
-    }
-
-    @DisplayName("Проверка удаления ЭПИКА")
-    @Test
-    public void deleteEpicByIdShouldDeleteTaskFromMapAndPrioritizedTasks() {
-        setupTasks();
-        int id = taskManager.createNewEpic(epic);
-        taskManager.deleteEpicById(id);
-
-        Assertions.assertNull(taskManager.getEpicById(id), "Ожидался null (отсутствие задачи)");
-        Assertions.assertFalse(taskManager.getPrioritizedTasks().contains(epic), "Ожидалась false (отсутствие задачи)");
-    }
-
-    @DisplayName("Проверка удаления ЭПИКА из истории")
-    @Test
-    public void deleteEpicByIdShouldDeleteTaskFromHistory() {
-        setupTasks();
-        int id = taskManager.createNewEpic(epic);
-        taskManager.getEpicById(id);
-        taskManager.deleteEpicById(id);
-
-        Assertions.assertFalse(taskManager.history().contains(epic), "Ожидалась false (отсутствие задачи)");
-    }
-
-    @DisplayName("Проверка удаления ЭПИКА и его SUBTASK")
-    @Test
-    public void deleteEpicByIdShouldDeleteSubTaskFromMapAndPrioritizedTasks() {
-        setupTasks();
-        taskManager.createNewEpic(epic);
-        subtask.setEpicID(epic.getId());
-        taskManager.createNewSubTask(subtask);
-        taskManager.deleteEpicById(epic.getId());
-
-        Assertions.assertFalse(taskManager.getAllSubtasks().contains(subtask), "Ожидалась false (отсутствие задачи)");
-        Assertions.assertFalse(taskManager.getPrioritizedTasks().contains(subtask), "Ожидалась false (отсутствие задачи)");
-    }
-
-    @DisplayName("Проверка удаления ЭПИКА и его SUBTASK из истории")
-    @Test
-    public void deleteEpicByIdShouldDeleteHisSubtasksTaskFromHistory() {
-        setupTasks();
-        taskManager.createNewEpic(epic);
-        subtask.setEpicID(epic.getId());
-        taskManager.createNewSubTask(subtask);
-        taskManager.getSubtaskById(subtask.getId());
-        taskManager.deleteEpicById(epic.getId());
-
-        Assertions.assertFalse(taskManager.getAllSubtasks().contains(subtask), "Ожидалась false (отсутствие задачи)");
-        Assertions.assertFalse(taskManager.history().contains(subtask), "Ожидалась false (отсутствие задачи)");
-    }
-
-    @DisplayName("Проверка получения у ЭПИКА его SUBTASK ")
-    @Test
-    public void getEpicSubtasksShouldReturnSubtasksList() {
-        setupTasks();
-        taskManager.createNewEpic(epic);
-        subtask.setEpicID(epic.getId());
-        taskManager.createNewSubTask(subtask);
-        Subtask subtask2 = new Subtask(subtask.getId(), "Сабтаск 1", "описание", StatusMarker.NEW,
-                Duration.ofMinutes(60), LocalDateTime.of(2023, 5, 2, 10, 0), epic.getId());
-        taskManager.createNewSubTask(subtask2);
-        Subtask[] subtasks = {subtask, subtask2};
-
-        Assertions.assertArrayEquals(subtasks, taskManager.getEpicSubtasks(epic).toArray(), "Ожидался список сабтасок");
-    }
-
-    @DisplayName("Проверка получения у ЭПИКА его SUBTASK (если их нет) ")
-    @Test
-    public void getEpicSubtasksShouldReturnEmptySubtasksList() {
-        setupTasks();
-        taskManager.createNewEpic(epic);
-
-        Assertions.assertTrue(taskManager.getEpicSubtasks(epic).isEmpty(), "Ожидался Empty список сабтасок");
-    }
-
-    @DisplayName("Проверка получения у ЭПИКА его SUBTASK при некорректности ЭПИКА")
-    @Test
-    public void getEpicSubtasksShouldReturnEmptySubtasksListWhenEpicIsNullOrWrongID() {
-        setupTasks();
-        Assertions.assertTrue(taskManager.getEpicSubtasks(epic).isEmpty(), "Ожидался Empty список сабтасок");
-        epic = null;
-
-        Assertions.assertTrue(taskManager.getEpicSubtasks(epic).isEmpty(), "Ожидался Empty список сабтасок");
-    }
-
-
-    @DisplayName("Проверка получения у отсортированных по важности задач")
-    @Test
-    public void getPrioritizedTasksShouldReturnSortedSetByStartTime() {
-        setupTasks();
-        Task task2 = new Task("задача 1", "описание 1", StatusMarker.NEW, Duration.ofMinutes(500),
-                LocalDateTime.of(2023, 4, 13, 10, 0));
-        Task task3 = new Task("задача 1", "описание 1", StatusMarker.NEW, Duration.ofMinutes(500),
-                LocalDateTime.of(2023, 4, 14, 10, 0));
-
-        taskManager.createNewTask(task3);
-        taskManager.createNewTask(task);
-        taskManager.createNewTask(task2);
-
-        Task[] tasks = {task, task2, task3};
-
-        Assertions.assertArrayEquals(tasks, taskManager.getPrioritizedTasks().toArray(), "Ожидался список сортированный " +
-                "по времени старта");
-    }
-
-    @DisplayName("Проверка получения у отсортированных по важности задач если их нет")
-    @Test
-    public void getPrioritizedTasksShouldReturnEmptySortedSetByStartTime() {
-        setupTasks();
-
-        Assertions.assertTrue(taskManager.getPrioritizedTasks().isEmpty(), "Ожидался пустой список");
-    }
-
-    @DisplayName("Проверка удаления ВСЕХ задач отовсюду")
-    @Test
-    public void clearAllShouldRemoveAllTypeOfTaskEverywhere() {
-        setupTasks();
-        taskManager.createNewTask(task);
-        taskManager.createNewEpic(epic);
-        subtask.setEpicID(epic.getId());
-        taskManager.createNewSubTask(subtask);
+    @BeforeEach
+    public void beforeEach() {
+        taskServer = new HttpTaskServer(taskManager);
         taskManager.clearAll();
-
-        Assertions.assertTrue(taskManager.getAllTasks().isEmpty(), "Ожидался пустой список");
-        Assertions.assertTrue(taskManager.getAllSubtasks().isEmpty(), "Ожидался пустой список");
-        Assertions.assertTrue(taskManager.getAllEpics().isEmpty(), "Ожидался пустой список");
-        Assertions.assertTrue(taskManager.getPrioritizedTasks().isEmpty(), "Ожидался пустой список");
+        Task task1 = new Task("task1", "descriptionOfTask1", NEW);
+        taskManager.getTask(taskManager.addTask(task1, 0)); // добавляем задачу и заполняем историю
+        Task task2 = new Task("task2", "descriptionOfTask2", DONE);
+        taskManager.getTask(taskManager.addTask(task2, 0));
+        Task epic = new Epic("epic1", "descriptionOfEpic1", NEW);
+        taskManager.getTask(taskManager.addTask(epic, 0)); // добавляем задачу и заполняем историю
+        LocalDateTime startTime = LocalDateTime.of(2022, 04, 01, 1, 20);
+        Duration duration = Duration.ofMinutes(20);
+        Task subtask1 = new Subtask("subtask1", "descriptionOfSubtask1", NEW, (Epic) epic,
+                startTime, duration);
+        taskManager.getTask(taskManager.addTask(subtask1, 0));
+        Task subtask2 = new Subtask("subtask2", "descriptionOfSubtask2", NEW, (Epic) epic);
+        taskManager.getTask(taskManager.addTask(subtask2, 0));
     }
 
-    @DisplayName("Проверка получения истории")
-    @Test
-    public void historyShouldListOfHistory() {
-        setupTasks();
-        Task task2 = new Task("задача 1", "описание 1", StatusMarker.NEW, Duration.ofMinutes(500),
-                LocalDateTime.of(2023, 4, 13, 10, 0));
-        Task task3 = new Task("задача 1", "описание 1", StatusMarker.NEW, Duration.ofMinutes(500),
-                LocalDateTime.of(2023, 4, 14, 10, 0));
-        taskManager.createNewTask(task);
-        taskManager.createNewTask(task2);
-        taskManager.createNewTask(task3);
-        taskManager.getTaskById(task3.getId());
-        taskManager.getTaskById(task.getId());
-        taskManager.getTaskById(task2.getId());
-        Task[] tasks = {task3, task, task2};
-
-        Assertions.assertArrayEquals(tasks, taskManager.history().toArray(), "Ожидался список в порядке запроса задач");
+    @AfterEach
+    public void afterEach() {
+        taskServer.stop();
     }
 
-    @DisplayName("Проверка пересечения по времени когда нет пересечения")
-    @Test
-    public void timeNotBusyShouldReturnTrueWhenNoIntersaction() {
-        setupTasks();
-        taskManager.createNewTask(task);
-        Task task2 = new Task("задача 1", "описание 1", StatusMarker.NEW, Duration.ofMinutes(500),
-                LocalDateTime.of(2023, 5, 13, 10, 0));
-
-        Assertions.assertTrue(taskManager.timeNotBusy(task2), "Ожидался TRUE когда нет пересечения по времени");
+    @AfterAll
+    public static void afterAll() {
+        kvServer.stop();
     }
 
-    @DisplayName("Проверка пересечения по времени когда есть пересечение")
     @Test
-    public void timeNotBusyShouldReturnFalseWhenIntersaction() {
-        setupTasks();
-        taskManager.createNewTask(task);
-        Task task2 = new Task("задача 1", "описание 1", StatusMarker.NEW, Duration.ofMinutes(500),
-                LocalDateTime.of(2023, 4, 12, 10, 0));
-
-        Assertions.assertFalse(taskManager.timeNotBusy(task2), "Ожидался False когда нет пересечения по времени");
+    // тест на возврат статуса NEW у эпика при пустом списке подзадач
+    public void shouldReturnEpicStatusAsNewWhenEmptyListOfSubtask() {
+        Task epic = new Epic("epic1", "descriptionOfEpic1", DONE);
+        final int epicId = taskManager.addTask(epic, 0);
+        taskManager.clearSubtasks();
+        assertEquals(NEW, taskManager.getTask(epicId).getStatus(), "У эпика должен быть статус NEW");
     }
 
-    @DisplayName("Проверка пересечения по времени при NULL")
     @Test
-    public void timeNotBusyShouldReturnTrueWhenArgumentNull() {
-        setupTasks();
-
-        Assertions.assertTrue(taskManager.timeNotBusy(null), "Ожидался TRUE когда нет пересечения по времени");
+    // тест на возврат статуса NEW у эпика, если у всех подзадач статус NEW
+    public void shouldReturnEpicStatusAsNewWhenAllSubtasksInStatusNew() {
+        assertEquals(NEW, taskManager.getEpics().get(0).getStatus(), "У эпика должен быть статус NEW");
     }
 
-    @DisplayName("Проверка обновления статуса у ЭПИКА - когда у сабтасок статус НОВАЯ")
     @Test
-    public void updateEpicStatusShouldBeNewWhenAllSubsNew() {
-        setupTasks();
-        taskManager.createNewEpic(epic);
-        subtask.setEpicID(epic.getId());
-        taskManager.createNewSubTask(subtask);
-        Subtask subtask2 = new Subtask(subtask.getId(), "Сабтаск 1", "описание", StatusMarker.NEW, Duration.ofMinutes(60),
-                LocalDateTime.of(2023, 5, 2, 10, 0), epic.getId());
-        taskManager.createNewSubTask(subtask2);
-        taskManager.updateEpicStatus(epic.getId());
-
-        Assertions.assertEquals(StatusMarker.NEW, epic.getStatus(), "Ожидался статус NEW ");
+    // тест на возврат статуса DONE у эпика, если у всех подзадач статус DONE
+    public void shouldReturnEpicStatusAsDoneWhenAllSubtasksInStatusDone() {
+        Task epic = new Epic("epic1", "descriptionOfEpic1", NEW);
+        int epicId = taskManager.addTask(epic, 0);
+        Task subtask1 = new Subtask("subtask1", "descriptionOfSubtask1", DONE, (Epic) epic);
+        taskManager.addTask(subtask1, 0);
+        Task subtask2 = new Subtask("subtask2", "descriptionOfSubtask2", DONE, (Epic) epic);
+        taskManager.addTask(subtask2, 0);
+        Task subtask3 = new Subtask("subtask3", "descriptionOfSubtask3", DONE, (Epic) epic);
+        taskManager.addTask(subtask3, 0);
+        assertEquals(DONE, taskManager.getTask(epicId).getStatus(), "У эпика должен быть статус DONE");
     }
 
-    @DisplayName("Проверка обновления статуса у ЭПИКА - когда нет сабтасок")
     @Test
-    public void updateEpicStatusShouldBeNewWhenNoSubs() {
-        setupTasks();
-        taskManager.createNewEpic(epic);
-        taskManager.updateEpicStatus(epic.getId());
-
-        Assertions.assertEquals(StatusMarker.NEW, epic.getStatus(), "Ожидался статус NEW");
+    // тест на возврат статуса IN_PROGRESS у эпика, если у подзадач статусы DONE и NEW
+    public void shouldReturnEpicStatusAsInProgressWhenSubtasksInStatusDoneOrNew() {
+        Task epic = new Epic("epic1", "descriptionOfEpic1", NEW);
+        int epicId = taskManager.addTask(epic, 0);
+        Task subtask1 = new Subtask("subtask1", "descriptionOfSubtask1", DONE, (Epic) epic);
+        taskManager.addTask(subtask1, 0);
+        Task subtask2 = new Subtask("subtask2", "descriptionOfSubtask2", NEW, (Epic) epic);
+        taskManager.addTask(subtask2, 0);
+        Task subtask3 = new Subtask("subtask3", "descriptionOfSubtask3", DONE, (Epic) epic);
+        taskManager.addTask(subtask3, 0);
+        assertEquals(IN_PROGRESS, taskManager.getTask(epicId).getStatus(),
+                "У эпика должен быть статус IN_PROGRESS");
     }
 
-    @DisplayName("Проверка обновления статуса у ЭПИКА - когда у сабтасок статус ВЫПОЛНЕНО")
     @Test
-    public void updateEpicStatusShouldBeDoneWhenAllSubsDone() {
-        setupTasks();
-        taskManager.createNewEpic(epic);
-        subtask.setEpicID(epic.getId());
-        subtask.setStatus(StatusMarker.DONE);
-        taskManager.createNewSubTask(subtask);
-        Subtask subtask2 = new Subtask(subtask.getId(), "Сабтаск 1", "описание", StatusMarker.DONE, Duration.ofMinutes(60),
-                LocalDateTime.of(2023, 5, 2, 10, 0), epic.getId());
-        taskManager.createNewSubTask(subtask2);
-        taskManager.updateEpicStatus(epic.getId());
-
-        Assertions.assertEquals(StatusMarker.DONE, epic.getStatus(), "Ожидался статус DONE");
+    // тест на возврат статуса IN_PROGRESS у эпика, если всех подзадач статусы IN_PROGRESS
+    public void shouldReturnEpicStatusAsInProgressWhenAllSubtasksInStatusInProgress() {
+        Task epic = new Epic("epic1", "descriptionOfEpic1", NEW);
+        int epicId = taskManager.addTask(epic, 0);
+        Task subtask1 = new Subtask("subtask1", "descriptionOfSubtask1", IN_PROGRESS, (Epic) epic);
+        taskManager.addTask(subtask1, 0);
+        Task subtask2 = new Subtask("subtask2", "descriptionOfSubtask2", IN_PROGRESS, (Epic) epic);
+        taskManager.addTask(subtask2, 0);
+        Task subtask3 = new Subtask("subtask3", "descriptionOfSubtask3", IN_PROGRESS, (Epic) epic);
+        taskManager.addTask(subtask3, 0);
+        assertEquals(IN_PROGRESS, taskManager.getTask(epicId).getStatus(),
+                "У эпика должен быть статус IN_PROGRESS");
     }
 
-    @DisplayName("Проверка обновления статуса у ЭПИКА - когда у сабтасок статус ВЫПОЛНЕНО")
     @Test
-    public void updateEpicStatusShouldBeInProgresWhenSubsDoneAndNew() {
-        setupTasks();
-        taskManager.createNewEpic(epic);
-        subtask.setEpicID(epic.getId());
-        taskManager.createNewSubTask(subtask);
-        Subtask subtask2 = new Subtask(subtask.getId(), "Сабтаск 1", "описание", StatusMarker.DONE,
-                Duration.ofMinutes(60), LocalDateTime.of(2023, 5, 2, 10, 0), epic.getId());
-        taskManager.createNewSubTask(subtask2);
-        taskManager.updateEpicStatus(epic.getId());
-
-        Assertions.assertEquals(StatusMarker.IN_PROGRESS, epic.getStatus(), "Ожидался статус IN_PROGRESS");
+    // тест на возврат статуса IN_PROGRESS у эпика, если у подзадач разные статусы
+    public void shouldReturnEpicStatusAsInProgressWhenSubtasksInDifferentStatus() {
+        Task epic = new Epic("epic1", "descriptionOfEpic1", NEW);
+        int epicId = taskManager.addTask(epic, 0);
+        Task subtask1 = new Subtask("subtask1", "descriptionOfSubtask1", NEW, (Epic) epic);
+        taskManager.addTask(subtask1, 0);
+        Task subtask2 = new Subtask("subtask2", "descriptionOfSubtask2", IN_PROGRESS, (Epic) epic);
+        taskManager.addTask(subtask2, 0);
+        Task subtask3 = new Subtask("subtask3", "descriptionOfSubtask3", DONE, (Epic) epic);
+        taskManager.addTask(subtask3, 0);
+        assertEquals(IN_PROGRESS, taskManager.getTask(epicId).getStatus(),
+                "У эпика должен быть статус IN_PROGRESS");
     }
 
-    @DisplayName("Проверка обновления статуса у ЭПИКА - когда у сабтасок статус В ПРОЦЕССЕ")
     @Test
-    public void updateEpicStatusShouldBeInProgresWhenSubsInProgres() {
-        setupTasks();
-        taskManager.createNewEpic(epic);
-        subtask.setEpicID(epic.getId());
-        subtask.setStatus(StatusMarker.IN_PROGRESS);
-        taskManager.createNewSubTask(subtask);
-        Subtask subtask2 = new Subtask(subtask.getId(), "Сабтаск 1", "описание", StatusMarker.IN_PROGRESS,
-                Duration.ofMinutes(60), LocalDateTime.of(2023, 5, 2, 10, 0), epic.getId());
-        taskManager.createNewSubTask(subtask2);
-        taskManager.updateEpicStatus(epic.getId());
+    // тест getAllTasks() при нормальном режиме работы
+    public void getAllTasksShouldReturnListOfTasks() {
+        List<Task> list = new ArrayList<>(taskManager.getAllTasks());
+        assertEquals(5, list.size(), "В списке должно быть 5 объектов");
+        Subtask subTaskExp = (Subtask) taskManager.getSubtasks().get(0);
+        assertEquals(taskManager.getEpics().get(0), subTaskExp.getEpic(), "В сабтаске должен быть эпик");
+        assertEquals(NEW, taskManager.getEpics().get(0).getStatus(),
+                "Статус у эпика должен быть NEW");
+    }
 
-        Assertions.assertEquals(StatusMarker.IN_PROGRESS, epic.getStatus(), "Ожидался статус IN_PROGRESS");
+    @Test
+    // тест getAllTasks() при пустом списке задач в менеджере
+    public void getAllTasksShouldReturnEmptyListTasksWhenNoTasks() {
+        taskManager.clearAll();
+        List<Task> list = new ArrayList<>(taskManager.getAllTasks());
+        assertTrue(list.isEmpty(), "Список задач должен быть пустым");
+    }
+
+    @Test
+    // тест getTasks() при нормальном режиме работы
+    public void getTasksShouldReturnListOfTasksOnly() {
+        List<Task> list = new ArrayList<>(taskManager.getTasks());
+        assertEquals(2, list.size(), "В списке должно быть 2 задачи");
+        assertEquals(Task.class, list.get(0).getClass(),
+                "Первый объект должен быть таском");
+        assertEquals(Task.class, list.get(1).getClass(),
+                "Второй объект должен быть таском");
+    }
+
+    @Test
+    // тест getTasks() при пустом списке задач в менеджере
+    public void getTasksShouldReturnEmptyListTasksWhenNoTasks() {
+        taskManager.clearTasks();
+        List<Task> list = new ArrayList<>(taskManager.getTasks());
+        assertTrue(list.isEmpty(), "Список задач должен быть пустым");
+    }
+
+    @Test
+    // тест getEpics() при нормальном режиме работы
+    public void getEpicsShouldReturnListOfEpicsOnly() {
+        List<Task> list = new ArrayList<>(taskManager.getEpics());
+        assertEquals(1, list.size(), "В списке должен быть 1 эпик");
+        assertEquals(Epic.class, list.get(0).getClass(),
+                "Первый объект должен быть эпиком");
+    }
+
+    @Test
+    // тест getEpics() при пустом списке эпиков
+    public void getEpicsShouldReturnEmptyListEpicsWhenNoEpics() {
+        taskManager.clearEpics();
+        List<Task> list = new ArrayList<>(taskManager.getEpics());
+        assertTrue(list.isEmpty(), "Список задач должен быть пустым");
+    }
+
+    @Test
+    // тест getSubtasks() при нормальном режиме работы
+    public void getSubtasksShouldReturnListOfSubtasksOnly() {
+        List<Task> list = new ArrayList<>(taskManager.getSubtasks());
+        assertEquals(2, list.size(), "В списке должно быть 2 подзадачи");
+        Subtask subTaskExp1 = (Subtask) list.get(0);
+        assertEquals(taskManager.getEpics().get(0), subTaskExp1.getEpic(), "В сабтаске1 должен быть эпик");
+        assertEquals(Subtask.class, list.get(0).getClass(),
+                "Первый объект должен быть сабтаском");
+        assertEquals(Subtask.class, list.get(1).getClass(),
+                "Второй объект должен быть сабтаском");
+    }
+
+    @Test
+    // тест getSubtasks() при пустом списке подзадач
+    public void getSubtasksShouldReturnEmptyListSubtasksWhenNoSubtasks() {
+        taskManager.clearSubtasks();
+        List<Task> list = new ArrayList<>(taskManager.getSubtasks());
+        assertTrue(list.isEmpty(), "Список подзадач должен быть пустым");
+    }
+
+    @Test
+    // тест getEpicSubtasks() при нормальном режиме работы
+    public void getEpicSubtasksShouldReturnListOfEpicSubtasksOnly() {
+        Epic epic = (Epic) taskManager.getEpics().get(0);
+        List<Task> list = new ArrayList<>(taskManager.getEpicSubtasks(epic));
+        assertEquals(2, list.size(), "В списке должно быть 2 подзадачи");
+        Subtask subTaskExp1 = (Subtask) list.get(0);
+        assertEquals(epic, subTaskExp1.getEpic(), "В сабтаске1 должен быть эпик1");
+        Subtask subTaskExp2 = (Subtask) list.get(1);
+        assertEquals(epic, subTaskExp2.getEpic(), "В сабтаске2 должен быть эпик1");
+        assertEquals(Optional.of(LocalDateTime.of(2022, 04, 01, 1, 40)),
+                taskManager.getEpics().get(0).getEndTime(),
+                "Время завершения эпика должно быть 2022-04-01 1:40");
+    }
+
+    @Test
+    // тест getEpicSubtasks() при пустом списке подзадач у эпика
+    public void getEpicSubtasksShouldReturnEmptyListSubtasksWhenEpicDoNotHaveSubtasks() {
+        taskManager.clearSubtasks();
+        List<Task> list = new ArrayList<>(taskManager.getEpicSubtasks((Epic) taskManager.getEpics().get(0)));
+        assertTrue(list.isEmpty(), "Список подзадач должен быть пустым");
+    }
+
+    @Test
+    // тест clearAll() - удаление всех простых задач, подзадач и эпиков
+    public void clearAllShouldDeleteAllTasksInAllManagers() {
+        taskManager.clearAll();
+        List<Task> list = new ArrayList<>(taskManager.getAllTasks());
+        assertTrue(list.isEmpty(), "Список задач в менеджере должен быть пустым");
+        list = new ArrayList<>(taskManager.history());
+        assertTrue(list.isEmpty(), "Список задач в истории должен быть пустым");
+    }
+
+    @Test
+    // тест clearTasks() - удаление всех простых задач
+    public void clearTasksShouldDeleteTasksInAllManagers() {
+        taskManager.clearTasks();
+        List<Task> list = new ArrayList<>(taskManager.getTasks());
+        assertTrue(list.isEmpty(), "Список задач в менеджере должен быть пустым");
+        list = new ArrayList<>(taskManager.history());
+        assertEquals(3, list.size(), "В истории должны остаться эпик с 2 подзадачами");
+    }
+
+    @Test
+    // тест clearSubtasks() - удаление всех подзадач из менеджера
+    public void clearSubtasksShouldDeleteSubtasksInAllManagersAndEpics() {
+        taskManager.clearSubtasks();
+        List<Task> list = new ArrayList<>(taskManager.getSubtasks());
+        assertTrue(list.isEmpty(), "Список подзадач в менеджере должен быть пустым");
+        assertEquals(3, taskManager.history().size(), "В истории должен остаться эпик и 2 задачи");
+        list = new ArrayList<>(taskManager.getEpicSubtasks((Epic) taskManager.getEpics().get(0)));
+        assertTrue(list.isEmpty(), "У эпика не должно быть подзадач");
+    }
+
+    @Test
+    // тест clearEpics() - удаление всех эпиков и подзадач из менеджера
+    public void clearEpicsShouldDeleteEpicsAndSubtasksInAllManagers() {
+        taskManager.clearEpics();
+        List<Task> list = new ArrayList<>(taskManager.getEpics());
+        assertTrue(list.isEmpty(), "Список эпиков в менеджере должен быть пустым");
+        list = new ArrayList<>(taskManager.getSubtasks());
+        assertTrue(list.isEmpty(), "Список подзадач в менеджере должен быть пустым");
+        assertEquals(2, taskManager.history().size(), "В истории должны остаться 2 задачи");
+    }
+
+    @Test
+    // тест getTask() на получение задачи при нормальной работе
+    public void getTaskShouldReturnTask() {
+        taskManager.clearAll();
+        LocalDateTime startTime = LocalDateTime.of(2023, 04, 01, 1, 20);
+        Duration duration = Duration.ofMinutes(50);
+        Task task1 = new Task("Test addNewTask", "Test addNewTask description", NEW,
+                startTime, duration);
+        final int taskId = taskManager.addTask(task1, 0);
+        final Task savedTask = taskManager.getTask(taskId);
+        assertEquals(task1, savedTask, "Задачи должны совпадать");
+        assertEquals(task1, taskManager.history().get(0), "В истории должна быть задача");
+    }
+
+    @Test
+    // тест getTask() на получение задачи при недопустимом Id
+    public void getTaskShouldReturnNullWhenIdNotCorrect() {
+        taskManager.clearAll();
+        LocalDateTime startTime = LocalDateTime.of(2022, 04, 01, 1, 20);
+        Duration duration = Duration.ofMinutes(20);
+        Task task1 = new Task("Test addNewTask", "Test addNewTask description", NEW,
+                startTime, duration);
+        taskManager.addTask(task1, 0);
+        assertNull(taskManager.getTask(100), "getTask() должен вернуть null");
+        assertTrue(taskManager.history().isEmpty(), "История должна быть пустой");
+    }
+
+    @Test
+    // тест getTask() на получение задачи при пустом Id
+    public void getTaskShouldReturnNullWhenIdNull() {
+        assertNull(taskManager.getTask(null), "getTask() должен вернуть null");
+        assertEquals(5, taskManager.history().size(), "В истории должно быть 5 элементов");
+    }
+
+    @Test
+    // тест getTask() на получение задачи при отсутствии задач
+    public void getTaskShouldReturnNullWhenManagerEmpty() {
+        taskManager.clearAll();
+        assertNull(taskManager.getTask(1), "getTask() должен вернуть null");
+        assertTrue(taskManager.history().isEmpty(), "История должна быть пустой");
+    }
+
+
+    @Test
+    // тест addTask() на добавление задачи без времени и продолжительности
+    public void shouldAddTaskWithoutTimeAndDuration() {
+        taskManager.clearAll();
+        Task task1 = new Task("Test addNewTask", "Test addNewTask description", NEW);
+        final int taskId = taskManager.addTask(task1, 0);
+        final Task savedTask = taskManager.getTask(taskId);
+        assertNotNull(savedTask, "Задача должна быть сохранена");
+        assertEquals(task1, savedTask, "Задачи должны совпадать");
+        final List<Task> tasks = taskManager.getTasks();
+        assertNotNull(tasks, "Задачи должны возвращаться");
+        assertEquals(1, tasks.size(), "Должна быть одна задача");
+        assertEquals(task1, tasks.get(0), "Задачи должны совпадать");
+    }
+
+    @Test
+    // тест addTask() на добавление задачи с пустым Id
+    public void shouldAddTaskWithNullId() {
+        taskManager.clearAll();
+        Task task1 = new Task("Test addNewTask", "Test addNewTask description", NEW);
+        final int taskId = taskManager.addTask(task1, null);
+        final Task savedTask = taskManager.getTask(taskId);
+        assertNotNull(savedTask, "Задача должна быть сохранена");
+        assertEquals(task1, savedTask, "Задачи должны совпадать");
+        final List<Task> tasks = taskManager.getTasks();
+        assertNotNull(tasks, "Задачи должны возвращаться");
+        assertEquals(1, tasks.size(), "Должна быть одна задача");
+        assertEquals(task1, tasks.get(0), "Задачи должны совпадать");
+    }
+
+    @Test
+    // тест addTask() на добавление задачи со временем и продолжительностью
+    public void shouldAddTaskWithTimeAndDuration() {
+        taskManager.clearAll();
+        LocalDateTime startTime = LocalDateTime.of(2022, 04, 01, 1, 20);
+        Duration duration = Duration.ofMinutes(20);
+        Task task1 = new Task("Test addNewTask", "Test addNewTask description", NEW,
+                startTime, duration);
+        final int taskId = taskManager.addTask(task1, 0);
+        final Task savedTask = taskManager.getTask(taskId);
+        assertNotNull(savedTask, "Задача должна быть сохранена");
+        assertEquals(task1, savedTask, "Задачи должны совпадать");
+        final List<Task> tasks = taskManager.getTasks();
+        assertNotNull(tasks, "Задачи должны возвращаться");
+        assertEquals(1, tasks.size(), "Должна быть одна задача");
+        assertEquals(task1, tasks.get(0), "Задачи должны совпадать");
+    }
+
+    @Test
+    // тест addTask() на корректное редактирование задачи
+    public void addTaskShouldCorrectEditTask() {
+        taskManager.clearAll();
+        LocalDateTime startTime = LocalDateTime.of(2022, 04, 01, 1, 20);
+        Duration duration = Duration.ofMinutes(20);
+        Task task = new Task("Test addNewTask", "Test addNewTask description", NEW,
+                startTime, duration);
+        final int taskId = taskManager.addTask(task, 0);
+        Task taskEdit = new Task("Test addNewTask", "Test EditTask description", NEW,
+                startTime, duration);
+        final int taskEditId = taskManager.addTask(taskEdit, taskId);
+        final Task savedTask = taskManager.getTask(taskEditId);
+        assertNotNull(savedTask, "Задача должна быть сохранена");
+        assertEquals(taskEdit, savedTask, "Сохраненная задача и отредактированная должны совпадать");
+        assertEquals(taskId, taskEditId, "Id задач должны совпадать");
+        assertNotEquals(task, taskEdit, "Начальная задача и отредактированная не должны совпадать");
+    }
+
+    @Test
+    // тест deleteTask() на корректное удаление задачи
+    public void deleteTaskShouldDeleteTaskInManagerAndHistory() {
+        List<Task> tasks = taskManager.getTasks();
+        taskManager.deleteTask(tasks.get(0).getTaskId());
+        assertEquals(1, taskManager.getTasks().size(), "должна остаться одна задача");
+        taskManager.deleteTask(tasks.get(1).getTaskId());
+        assertTrue(taskManager.getTasks().isEmpty(), "Список задач должен быть пустым");
+        assertEquals(3, taskManager.history().size(), "В истории должны остаться эпик и подзадачи");
+    }
+
+    @Test
+    // тест deleteTask() на корректное удаление подзадачи из менеджера, истории и эпика
+    public void deleteTaskShouldDeleteSubtaskInManagerAndHistoryAndEpic() {
+        List<Task> list = new ArrayList<>(taskManager.getSubtasks());
+        taskManager.deleteTask(list.get(0).getTaskId());
+        assertEquals(1, taskManager.getSubtasks().size(), "В списке подзадач должна быть одна подзадача");
+        assertEquals(4, taskManager.history().size(), "В истории должны остаться 4 задачи");
+        list = new ArrayList<>(taskManager.getEpicSubtasks((Epic) taskManager.getEpics().get(0)));
+        assertEquals(1, list.size(), "В списке подзадач эпика должна быть 1 подзадача");
+    }
+
+    @Test
+        // тест add() на добавление задачи в историю
+    void addShouldAddHistory() {
+        taskManager.clearAll();
+        LocalDateTime startTime = LocalDateTime.of(2022, 04, 01, 1, 20);
+        Duration duration = Duration.ofMinutes(20);
+        Task task1 = new Task("Test addNewTask", "Test addNewTask description", NEW,
+                startTime, duration);
+        HistoryManager historyManager = Managers.getDefaultHistory();
+        historyManager.add(task1);
+        final List<Task> history = historyManager.getHistory();
+        assertNotNull(history, "История должна быть заполнена.");
+        assertEquals(1, history.size(), "В истории должна быть одна задача");
+        assertEquals(task1.getTaskId(), history.get(0).getTaskId(), "ID задачи в истории должна быть равны");
+    }
+
+    @Test
+        // тест history() на возврат пустого списка, когда история пуста
+    void historyShouldReturnEmptyListWhenHistoryEmpty() {
+        taskManager.clearAll();
+        LocalDateTime startTime = LocalDateTime.of(2022, 04, 01, 1, 20);
+        Duration duration = Duration.ofMinutes(20);
+        Task task1 = new Task("Test addNewTask", "Test addNewTask description", NEW,
+                startTime, duration);
+        HistoryManager historyManager = Managers.getDefaultHistory();
+        final List<Task> history = historyManager.getHistory();
+        assertTrue(history.isEmpty(), "История должна быть пустой");
+    }
+
+    @Test
+        // history() должен возвращать список без дублей
+    void historyShouldReturnOnlyOneTaskInstance() {
+        taskManager.getTask(1);
+        List<Task> list = new ArrayList<>(taskManager.history()); // задействует getHistory
+        assertEquals(5, list.size(), "Задачи в истории не должны дублироваться");
+    }
+
+    @Test
+        // тест на удаление первой задачи в списке из истории
+    void removeShouldDeleteFirstTaskInHistory() {
+        Task task = taskManager.getTask(1);
+        taskManager.deleteTask(1);
+        List<Task> list = new ArrayList<>(taskManager.history());
+        assertEquals(4, list.size(), "В истории должно быть 4 задачи");
+        assertFalse(list.contains(task), "Первая задача должна быть удалена");
+    }
+
+    @Test
+        // тест на удаление последней задачи из истории
+    void removeShouldDeleteLastTaskInHistory() {
+        Task subtask = taskManager.getTask(5);
+        taskManager.deleteTask(5);
+        List<Task> list = new ArrayList<>(taskManager.history());
+        assertEquals(4, list.size(), "В истории должно быть 4 задачи");
+        assertFalse(list.contains(subtask), "Последняя задача должна быть удалена");
+    }
+
+    @Test
+        // тест на удаление задачи в середине списка из истории
+    void removeShouldDeleteMiddleTaskInHistory() {
+        Task epic = taskManager.getEpics().get(0);
+        taskManager.deleteTask(epic.getTaskId());
+        List<Task> list = new ArrayList<>(taskManager.history());
+        assertEquals(2, list.size(), "В истории должно быть 2 задачи");
+        assertFalse(list.contains(epic), "Средняя задача должна быть удалена");
+    }
+
+    @Test
+        // получение HTTPTaskManager в качестве "по-умолчанию"
+    void getDefaultShouldReturnInMemoryTaskManager() {
+        TaskManager taskManager = Managers.getDefault();
+        assertEquals(HTTPTaskManager.class, taskManager.getClass(),
+                "Должен возвращать объект класса HTTPTaskManager");
+    }
+
+    @Test
+        // тест переопределения hashCode для одинаковых задач
+    void hashCodeShouldReturnEqualHashForEqualTask() {
+        LocalDateTime startTime = LocalDateTime.of(2022, 04, 01, 1, 20);
+        Duration duration = Duration.ofMinutes(20);
+        Task task1 = new Task("Test addNewTask", "Test addNewTask description", NEW,
+                startTime, duration);
+        task1.setTaskId(1);
+        Task task2 = new Task("Test addNewTask", "Test addNewTask description", NEW,
+                startTime, duration);
+        task2.setTaskId(1);
+        assertEquals(task1.hashCode(), task2.hashCode(), "Должно быть одинаковое значение hashcode");
+    }
+
+    @Test
+        // тест переопределения hashCode для разных задач
+    void hashCodeShouldReturnDifferentHashForDifferentTask() {
+        LocalDateTime startTime = LocalDateTime.of(2022, 04, 01, 1, 20);
+        Duration duration = Duration.ofMinutes(20);
+        Task task1 = new Task("Test addNewTask", "Test addNewTask description", NEW,
+                startTime, duration);
+        task1.setTaskId(1);
+        Task task2 = new Task("Test addNewTask", "Test addNewTask description", DONE,
+                startTime, duration);
+        task2.setTaskId(1);
+        assertNotEquals(task1.hashCode(), task2.hashCode(), "Должно быть разное значение hashcode");
+    }
+
+
+    // тест на получение исключения при добавлении двух пересекающихся задач
+    @Test
+    void shouldThrowAddTaskExceptionWhenTasksInterseсtion() {
+        taskManager.clearAll();
+        LocalDateTime startTime = LocalDateTime.of(2022, 04, 01, 1, 20);
+        Duration duration = Duration.ofMinutes(20);
+        Task task1 = new Task("Test addNewTask", "Test addNewTask description", NEW,
+                startTime, duration);
+        int id1 = taskManager.addTask(task1, 0);
+        Task task2 = new Task("Test addNewTask", "Test addNewTask description", NEW,
+                startTime.minusMinutes(10), duration);
+
+        final AddTaskException exception = assertThrows(
+                AddTaskException.class,
+                // создание и переопределение экземпляра класса Executable
+                new Executable() {
+                    @Override
+                    public void execute() {
+                        taskManager.addTask(task2, 0);
+                    }
+                });
+        assertEquals("Пересечение по времени с существующей задачей ID="
+                + id1, exception.getMessage(), "Выбрасывает исключение при добавлении пересекающихся задач");
+    }
+
+    // тест getPrioritizedTasks() при пустом списке задач
+    @Test
+    void getPrioritizedTasksShouldReturnEmptyTaskListWhenNoTaskInManager() {
+        taskManager.clearAll();
+        assertTrue(taskManager.getPrioritizedTasks().isEmpty(), "Отсортированный список должен быть пустым");
+    }
+
+    // тест getPrioritizedTasks() при нормальном режиме работы
+    @Test
+    void getPrioritizedTasksShouldReturnSortedTaskList() {
+        LocalDateTime startTime = LocalDateTime.of(2023, 04, 01, 1, 20);
+        Duration duration = Duration.ofMinutes(5);
+        Task task1 = new Task("Test addNewTask", "Test addNewTask description", NEW,
+                startTime, duration);
+        taskManager.addTask(task1, 0);
+        Task task2 = new Task("Test addNewTask", "Test addNewTask description", NEW,
+                startTime.minusMinutes(50), duration);
+        taskManager.addTask(task2, 0);
+        List<Task> list = new ArrayList<>(taskManager.getPrioritizedTasks());
+        assertEquals(6, list.size(), "В списке должно быть 6 задач без эпика");
+        assertEquals(4, list.get(0).getTaskId(), "Первым в списке должен быть сабтаск с ID=4");
+        assertEquals(task2, list.get(1), "Второй должна быть задача task2");
+        assertEquals(task1, list.get(2), "Третьей должна быть задача task1");
+        assertEquals(1, list.get(3).getTaskId(), "Четвертой должна быть задача без времени");
+        assertEquals(2, list.get(4).getTaskId(), "Пятой должна быть задача без времени");
+        assertEquals(5, list.get(5).getTaskId(), "Шестым должен быть сабтаск без времени");
+    }
+
+    // проверка работы эндпоинта GET "http://localhost:8080/tasks/task/ при нормальной работе
+    @Test
+    void getTaskEndpointShouldReturnListOfTasks() throws IOException, InterruptedException {
+        HttpClient client = HttpClient.newHttpClient();
+        // вызываем список всех простых задач из менеджера
+        URI url = URI.create("http://localhost:8080/tasks/task/");
+        HttpRequest request = HttpRequest.newBuilder().uri(url).GET().build();
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, response.statusCode(), "Код ответа должен быть 200");
+        JsonElement jsonElement = JsonParser.parseString(response.body());
+        JsonArray jsonArray = jsonElement.getAsJsonArray();
+        JsonObject jsonObject = jsonArray.get(0).getAsJsonObject();
+        Integer firstTaskId = jsonObject.get("taskId").getAsInt();
+        String firstTaskName = jsonObject.get("name").getAsString();
+        assertEquals(1, firstTaskId, "Id первой задачи должен быть равен 1");
+        assertEquals("task1", firstTaskName, "Название первой задачи должно быть task1");
+        jsonObject = jsonArray.get(1).getAsJsonObject();
+        Integer secondTaskId = jsonObject.get("taskId").getAsInt();
+        String secondTaskName = jsonObject.get("name").getAsString();
+        assertEquals(2, secondTaskId, "Id второй задачи должен быть равен 2");
+        assertEquals("task2", secondTaskName, "Название второй задачи должно быть task2");
+        assertEquals(2, jsonArray.size(), "Должно быть получено 2 задачи");
+    }
+
+    // проверка работы эндпоинта GET "http://localhost:8080/tasks/task/ при отсутствии простых задач
+    @Test
+    void getTaskEndpointShouldReturnListOfTasksWhenTaskListEmpty() throws IOException, InterruptedException {
+        taskManager.clearAll();
+        HttpClient client = HttpClient.newHttpClient();
+        // вызываем список всех простых задач из менеджера
+        URI url = URI.create("http://localhost:8080/tasks/task/");
+        HttpRequest request = HttpRequest.newBuilder().uri(url).GET().build();
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, response.statusCode(), "Код ответа должен быть 200");
+        assertEquals("[]", response.body(), "Список задач должен быть пустым");
+    }
+
+    // проверка работы эндпоинта GET "http://localhost:8080/tasks/task/?id= при нормальной работе
+    @Test
+    void getTaskByIdEndpointShouldReturnTask() throws IOException, InterruptedException {
+        HttpClient client = HttpClient.newHttpClient();
+        // вызываем первую простую задачу из менеджера
+        URI url = URI.create("http://localhost:8080/tasks/task/?id=1");
+        HttpRequest request = HttpRequest.newBuilder().uri(url).GET().build();
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, response.statusCode(), "Код ответа должен быть 200");
+        JsonElement jsonElement = JsonParser.parseString(response.body());
+        JsonObject jsonObject = jsonElement.getAsJsonObject();
+        Integer taskId = jsonObject.get("taskId").getAsInt();
+        String name = jsonObject.get("name").getAsString();
+        assertEquals(1, taskId, "Id задачи должен быть равен 1");
+        assertEquals("task1", name, "Название задачи должно быть task1");
+    }
+
+    // проверка работы эндпоинта GET "http://localhost:8080/tasks/task/?id= при пустом списке задач или с "плохим" Id
+    @Test
+    void getTaskByIdEndpointShouldReturn404WhenTaskListIsEmpty() throws IOException, InterruptedException {
+        taskManager.clearAll();
+        HttpClient client = HttpClient.newHttpClient();
+        // вызываем первую простую задачу из менеджера
+        URI url = URI.create("http://localhost:8080/tasks/task/?id=1");
+        HttpRequest request = HttpRequest.newBuilder().uri(url).GET().build();
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        assertEquals(404, response.statusCode(), "Код ответа должен быть 404 (не найдено)");
+        assertEquals("Некорректные параметры запроса!", response.body(), "Должен быть ответ сервера");
+    }
+
+    // проверка работы эндпоинта POST "http://localhost:8080/tasks/task/ при добавлении задачи
+    @Test
+    void addTaskEndpointShouldAddTaskInManager() throws IOException, InterruptedException {
+        // добавляем простую задачу
+        Task newTask = new Task("NewTask", "DescriptionNewTask", IN_PROGRESS);
+        HttpClient client = HttpClient.newHttpClient();
+        URI url = URI.create("http://localhost:8080/tasks/task/");
+        Gson gson = new Gson();
+        String json = gson.toJson(newTask);
+        HttpRequest.BodyPublisher body = HttpRequest.BodyPublishers.ofString(json);
+        HttpRequest request = HttpRequest.newBuilder().uri(url).POST(body).build();
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, response.statusCode(), "Код ответа сервера должен быть 200");
+        assertEquals(3, taskManager.getTasks().size(), "В менеджере должно быть 3 простых задачи");
+        assertEquals("NewTask", taskManager.getTasks().get(taskManager.getTasks().size() - 1).getName(),
+                "Название задачи должно быть NewTask");
+        assertEquals(IN_PROGRESS, taskManager.getTasks().get(taskManager.getTasks().size() - 1).getStatus(),
+                "Статус задачи должен быть IN_PROGRESS");
+    }
+
+    // проверка работы эндпоинта POST "http://localhost:8080/tasks/task/ при обновлении задачи
+    @Test
+    void addTaskEndpointShouldUpdateTaskInManager() throws IOException, InterruptedException {
+        // обновляем статус у простой задачи с NEW на DONE
+        Task task = taskManager.getTask(1);
+        task.setStatus(DONE);
+        HttpClient client = HttpClient.newHttpClient();
+        URI url = URI.create("http://localhost:8080/tasks/task/");
+        Gson gson = new Gson();
+        String json = gson.toJson(task);
+        HttpRequest.BodyPublisher body = HttpRequest.BodyPublishers.ofString(json);
+        HttpRequest request = HttpRequest.newBuilder().uri(url).POST(body).build();
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, response.statusCode(), "Код ответа сервера должен быть 200");
+        assertEquals(2, taskManager.getTasks().size(), "В менеджере должно быть 2 простых задачи");
+        assertEquals("task1", taskManager.getTask(task.getTaskId()).getName(),
+                "Название задачи должно быть task1");
+        assertEquals(DONE, taskManager.getTask(task.getTaskId()).getStatus(),
+                "Статус задачи должен быть DONE");
+    }
+
+    // проверка работы эндпоинта DELETE "http://localhost:8080/tasks/task/?id= , когда задача есть в менеджере
+    @Test
+    void deleteTaskEndpointShouldDeleteTaskInManager() throws IOException, InterruptedException {
+        HttpClient client = HttpClient.newHttpClient();
+        URI url = URI.create("http://localhost:8080/tasks/task/?id=1");
+        HttpRequest request = HttpRequest.newBuilder().uri(url).DELETE().build();
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, response.statusCode(), "Код ответа сервера должен быть 200");
+        assertEquals(1, taskManager.getTasks().size(), "В менеджере должна быть 1 простая задача");
+        assertEquals("task2", taskManager.getTasks().get(0).getName(),
+                "Название задачи должно быть task2");
+    }
+
+    // проверка работы эндпоинта DELETE "http://localhost:8080/tasks/task/?id= при отсутствии задач
+    @Test
+    void deleteTaskEndpointShouldReturn404ifTaskListEmpty() throws IOException, InterruptedException {
+        taskManager.clearAll();
+        HttpClient client = HttpClient.newHttpClient();
+        URI url = URI.create("http://localhost:8080/tasks/task/?id=1");
+        HttpRequest request = HttpRequest.newBuilder().uri(url).DELETE().build();
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        assertEquals(404, response.statusCode(), "Код ответа сервера должен быть 404 (не найдено");
+        assertEquals("Некорректные параметры запроса!", response.body(),
+                "Должен быть ответ сервера");
+    }
+
+    // проверка работы эндпоинта DELETE "http://localhost:8080/tasks/task/
+    @Test
+    void deleteTaskEndpointShouldDeleteAllTaskInManager() throws IOException, InterruptedException {
+        HttpClient client = HttpClient.newHttpClient();
+        URI url = URI.create("http://localhost:8080/tasks/task/");
+        HttpRequest request = HttpRequest.newBuilder().uri(url).DELETE().build();
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, response.statusCode(), "Код ответа сервера должен быть 200");
+        assertTrue(taskManager.getTasks().isEmpty(), "В менеджере не должно быть простых задач");
+        assertTrue(taskManager.getSubtasks().isEmpty(), "В менеджере не должно быть подзадач");
+        assertTrue(taskManager.getEpics().isEmpty(), "В менеджере не должно быть эпиков");
+    }
+
+    // проверка работы эндпоинта DELETE "http://localhost:8080/tasks/task/ при отсутствии задач в менеджере
+    @Test
+    void deleteTaskEndpointShouldDeleteAllTaskInManagerWhenTaskListEmpty() throws IOException, InterruptedException {
+        taskManager.clearAll();
+        HttpClient client = HttpClient.newHttpClient();
+        URI url = URI.create("http://localhost:8080/tasks/task/");
+        HttpRequest request = HttpRequest.newBuilder().uri(url).DELETE().build();
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, response.statusCode(), "Код ответа сервера должен быть 200");
+        assertTrue(taskManager.getTasks().isEmpty(), "В менеджере не должно быть простых задач");
+        assertTrue(taskManager.getSubtasks().isEmpty(), "В менеджере не должно быть подзадач");
+        assertTrue(taskManager.getEpics().isEmpty(), "В менеджере не должно быть эпиков");
+    }
+
+    // проверка работы эндпоинта GET "http://localhost:8080/tasks/subtask/ при нормальной работе
+    @Test
+    void getSubtaskEndpointShouldReturnListOfSubtasks() throws IOException, InterruptedException {
+        HttpClient client = HttpClient.newHttpClient();
+        // вызываем список подзадач из менеджера
+        URI url = URI.create("http://localhost:8080/tasks/subtask/");
+        HttpRequest request = HttpRequest.newBuilder().uri(url).GET().build();
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, response.statusCode(), "Код ответа должен быть 200");
+        JsonElement jsonElement = JsonParser.parseString(response.body());
+        JsonArray jsonArray = jsonElement.getAsJsonArray();
+        JsonObject jsonObject = jsonArray.get(0).getAsJsonObject();
+        Integer firstSubtaskId = jsonObject.get("taskId").getAsInt();
+        String firstSubtaskName = jsonObject.get("name").getAsString();
+        assertEquals(4, firstSubtaskId, "id первой подзадачи должен быть равен 4");
+        assertEquals("subtask1", firstSubtaskName, "Название первой подзадачи должно быть subtask1");
+        jsonObject = jsonArray.get(1).getAsJsonObject();
+        Integer secondSubtaskId = jsonObject.get("taskId").getAsInt();
+        String secondSubtaskName = jsonObject.get("name").getAsString();
+        assertEquals(5, secondSubtaskId, "id второй подзадачи должен быть равен 5");
+        assertEquals("subtask2", secondSubtaskName, "Название второй подзадачи должно быть subtask2");
+        assertEquals(2, jsonArray.size(), "Должно быть получено 2 подзадачи");
+    }
+
+    // проверка работы эндпоинта GET "http://localhost:8080/tasks/subtask/ при отсутствии подзадач в менеджере
+    @Test
+    void getSubtaskEndpointShouldReturnEmptyWhenListOfSubtaskEmpty() throws IOException, InterruptedException {
+        taskManager.clearAll();
+        HttpClient client = HttpClient.newHttpClient();
+        // вызываем список подзадач из менеджера
+        URI url = URI.create("http://localhost:8080/tasks/subtask/");
+        HttpRequest request = HttpRequest.newBuilder().uri(url).GET().build();
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, response.statusCode(), "Код ответа должен быть 200");
+        assertEquals("[]", response.body(), "Список подзадач должен быть пустым");
+    }
+
+    // проверка работы эндпоинта GET "http://localhost:8080/tasks/epic/ при нормальной работе
+    @Test
+    void getEpicsEndpointShouldReturnListOfEpics() throws IOException, InterruptedException {
+        Epic epicNew = new Epic("epic2", "descriptionEpic2", NEW);
+        taskManager.addTask(epicNew, 0);
+        HttpClient client = HttpClient.newHttpClient();
+        // вызываем список эпиков из менеджера
+        URI url = URI.create("http://localhost:8080/tasks/epic/");
+        HttpRequest request = HttpRequest.newBuilder().uri(url).GET().build();
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, response.statusCode(), "Код ответа должен быть 200");
+        JsonElement jsonElement = JsonParser.parseString(response.body());
+        JsonArray jsonArray = jsonElement.getAsJsonArray();
+        JsonObject jsonObject = jsonArray.get(0).getAsJsonObject();
+        Integer firstEpicId = jsonObject.get("taskId").getAsInt();
+        String firstEpicName = jsonObject.get("name").getAsString();
+        assertEquals(3, firstEpicId, "id первой эпика должен быть равен 3");
+        assertEquals("epic1", firstEpicName, "Название первого эпика должно быть epic1");
+        jsonObject = jsonArray.get(1).getAsJsonObject();
+        Integer secondEpicId = jsonObject.get("taskId").getAsInt();
+        String secondEpicName = jsonObject.get("name").getAsString();
+        assertEquals(6, secondEpicId, "id второго эпика должен быть равен 6");
+        assertEquals("epic2", secondEpicName, "Название второго эпика должно быть epic2");
+        assertEquals(2, jsonArray.size(), "Должно быть получено 2 эпика");
+    }
+
+    // проверка работы эндпоинта GET "http://localhost:8080/tasks/epic/ при отсутствии подзадач в менеджере
+    @Test
+    void getEpicsEndpointShouldReturnEmptyWhenListOfEpicEmpty() throws IOException, InterruptedException {
+        taskManager.clearAll();
+        HttpClient client = HttpClient.newHttpClient();
+        // вызываем список эпиков из менеджера
+        URI url = URI.create("http://localhost:8080/tasks/epic/");
+        HttpRequest request = HttpRequest.newBuilder().uri(url).GET().build();
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, response.statusCode(), "Код ответа должен быть 200");
+        assertEquals("[]", response.body(), "Список эпиков должен быть пустым");
+    }
+
+    // проверка работы эндпоинта GET "http://localhost:8080/tasks/subtask/epic/?id= при нормальной работе
+    @Test
+    void getEpicSubtaskEndpointShouldReturnListOfSubtasks() throws IOException, InterruptedException {
+        HttpClient client = HttpClient.newHttpClient();
+        // вызываем список подзадач эпика из менеджера
+        URI url = URI.create("http://localhost:8080/tasks/subtask/epic/?id=3");
+        HttpRequest request = HttpRequest.newBuilder().uri(url).GET().build();
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, response.statusCode(), "Код ответа должен быть 200");
+        JsonElement jsonElement = JsonParser.parseString(response.body());
+        JsonArray jsonArray = jsonElement.getAsJsonArray();
+        JsonObject jsonObject = jsonArray.get(0).getAsJsonObject();
+        Integer firstSubtaskId = jsonObject.get("taskId").getAsInt();
+        String firstSubtaskName = jsonObject.get("name").getAsString();
+        assertEquals(4, firstSubtaskId, "id первой подзадачи должен быть равен 4");
+        assertEquals("subtask1", firstSubtaskName, "Название первой подзадачи должно быть subtask1");
+        jsonObject = jsonArray.get(1).getAsJsonObject();
+        Integer secondSubtaskId = jsonObject.get("taskId").getAsInt();
+        String secondSubtaskName = jsonObject.get("name").getAsString();
+        assertEquals(5, secondSubtaskId, "id второй подзадачи должен быть равен 5");
+        assertEquals("subtask2", secondSubtaskName, "Название второй подзадачи должно быть subtask2");
+        assertEquals(2, jsonArray.size(), "Должно быть получено 2 подзадачи");
+    }
+
+    // проверка работы эндпоинта GET "http://localhost:8080/tasks/subtask/epic/?id= при пустом списке подзадач у эпика
+    @Test
+    void getEpicSubtaskEndpointShouldReturnEmptyListOfSubtasks() throws IOException, InterruptedException {
+        Epic epicNew = new Epic("epic2", "descriptionEpic2", NEW);
+        int epicId = taskManager.addTask(epicNew, 0);
+        HttpClient client = HttpClient.newHttpClient();
+        // вызываем список подзадач эпика из менеджера
+        URI url = URI.create("http://localhost:8080/tasks/subtask/epic/?id=" + epicId);
+        HttpRequest request = HttpRequest.newBuilder().uri(url).GET().build();
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, response.statusCode(), "Код ответа должен быть 200");
+        assertEquals("[]", response.body(), "Список эпиков должен быть пустым");
+    }
+
+    // проверка работы эндпоинта GET "http://localhost:8080/tasks/history при нормальной работе
+    @Test
+    void getHistoryEndpointShouldReturnHistoryList() throws IOException, InterruptedException {
+        HttpClient client = HttpClient.newHttpClient();
+        // вызываем список задач истории из менеджера
+        URI url = URI.create("http://localhost:8080/tasks/history");
+        HttpRequest request = HttpRequest.newBuilder().uri(url).GET().build();
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, response.statusCode(), "Код ответа должен быть 200");
+        JsonElement jsonElement = JsonParser.parseString(response.body());
+        JsonArray jsonArray = jsonElement.getAsJsonArray();
+        JsonObject jsonObject = jsonArray.get(0).getAsJsonObject();
+        Integer firstTaskId = jsonObject.get("taskId").getAsInt();
+        String firstTaskName = jsonObject.get("name").getAsString();
+        assertEquals(1, firstTaskId, "id первой задачи в истории должен быть равен 1");
+        assertEquals("task1", firstTaskName, "Название первой задачи должно быть task1");
+        jsonObject = jsonArray.get(4).getAsJsonObject();
+        Integer lastTaskId = jsonObject.get("taskId").getAsInt();
+        String lastTaskName = jsonObject.get("name").getAsString();
+        assertEquals(5, lastTaskId, "id последней задачи в истории должен быть равен 5");
+        assertEquals("subtask2", lastTaskName, "Название последней задачи в истории должно быть subtask2");
+        assertEquals(5, jsonArray.size(), "Должно быть получено 5 задач");
+    }
+
+    // проверка работы эндпоинта GET "http://localhost:8080/tasks/history при пустой истории
+    @Test
+    void getHistoryEndpointShouldReturnEmptyHistoryListWhenHistoryEmpty() throws IOException, InterruptedException {
+        taskManager.clearAll();
+        HttpClient client = HttpClient.newHttpClient();
+        // вызываем список задач истории из менеджера
+        URI url = URI.create("http://localhost:8080/tasks/history");
+        HttpRequest request = HttpRequest.newBuilder().uri(url).GET().build();
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, response.statusCode(), "Код ответа должен быть 200");
+        assertEquals("[]", response.body(), "Список задач в истории должен быть пустым");
+    }
+
+    // проверка работы эндпоинта GET "http://localhost:8080/tasks/ при нормальной работе
+    @Test
+    void getPrioritizedTasksEndpointShouldReturnSortedTaskList() throws IOException, InterruptedException {
+        LocalDateTime startTime = LocalDateTime.of(2023, 04, 01, 1, 20);
+        Duration duration = Duration.ofMinutes(5);
+        Task task1 = new Task("NewTask1", "Test addNewTask1 description", NEW,
+                startTime, duration);
+        taskManager.addTask(task1, 0);
+        Task task2 = new Task("NewTask2", "Test addNewTask2 description", NEW,
+                startTime.minusMinutes(50), duration);
+        taskManager.addTask(task2, 0);
+        HttpClient client = HttpClient.newHttpClient();
+        // вызываем список приоритетных задач из менеджера
+        URI url = URI.create("http://localhost:8080/tasks/");
+        HttpRequest request = HttpRequest.newBuilder().uri(url).GET().build();
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, response.statusCode(), "Код ответа должен быть 200");
+        JsonElement jsonElement = JsonParser.parseString(response.body());
+        JsonArray jsonArray = jsonElement.getAsJsonArray();
+        assertEquals(6, jsonArray.size(), "В списке должно быть 6 задач без эпика");
+        JsonObject jsonObject = jsonArray.get(0).getAsJsonObject();
+        Integer firstTaskId = jsonObject.get("taskId").getAsInt();
+        String firstTaskName = jsonObject.get("name").getAsString();
+        assertEquals(4, firstTaskId, "Первым в списке должен быть сабтаск с ID=4");
+        assertEquals("subtask1", firstTaskName, "Название первой задачи в списке должно быть subtask1");
+        jsonObject = jsonArray.get(1).getAsJsonObject();
+        Integer secondTaskId = jsonObject.get("taskId").getAsInt();
+        String secondTaskName = jsonObject.get("name").getAsString();
+        assertEquals(7, secondTaskId, "id второй задачи в списке должен быть равен 7");
+        assertEquals("NewTask2", secondTaskName, "Название второй задачи списка должно быть NewTask2");
+        jsonObject = jsonArray.get(2).getAsJsonObject();
+        Integer thirdTaskId = jsonObject.get("taskId").getAsInt();
+        String thirdTaskName = jsonObject.get("name").getAsString();
+        assertEquals(6, thirdTaskId, "id третьей задачи в списке должен быть равен 6");
+        assertEquals("NewTask1", thirdTaskName, "Название третьей задачи списка должно быть NewTask1");
+    }
+
+    // проверка работы эндпоинта GET "http://localhost:8080/tasks/ при отсутствии задач в менеджере
+    @Test
+    void getPrioritizedTasksEndpointShouldReturnEmptyTaskList() throws IOException, InterruptedException {
+        taskManager.clearAll();
+        HttpClient client = HttpClient.newHttpClient();
+        // вызываем список приоритетных задач из менеджера
+        URI url = URI.create("http://localhost:8080/tasks/");
+        HttpRequest request = HttpRequest.newBuilder().uri(url).GET().build();
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, response.statusCode(), "Код ответа должен быть 200");
+        assertEquals("[]", response.body(), "Список задач должен быть пустым");
     }
 }
