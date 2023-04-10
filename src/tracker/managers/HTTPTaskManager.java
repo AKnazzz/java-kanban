@@ -11,8 +11,8 @@ import java.util.List;
 import static tracker.util.Converter.*;
 
 public class HTTPTaskManager extends FileBackedTasksManager {
-    private KVTaskClient kvtaskClient;
-    public String apiKey;
+    private final KVTaskClient kvtaskClient;
+    private String apiKey;
 
     public String getApiKey() {
         return apiKey;
@@ -42,7 +42,7 @@ public class HTTPTaskManager extends FileBackedTasksManager {
         List<Task> taskList = new ArrayList<>();
 
         if (jsonTasks != null) {
-            //    ArrayList taskList = gson.fromJson(jsonTasks, ArrayList.class);
+
             taskList = gson.fromJson(jsonTasks, new TypeToken<ArrayList<Task>>() {
             }.getType());
         }
@@ -77,7 +77,7 @@ public class HTTPTaskManager extends FileBackedTasksManager {
     }
 
     @Override
-    protected void save() {
+    public void save() {
 
         // сохраняем простые задачи
         if (!getTasks().isEmpty()) {

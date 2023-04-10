@@ -1,11 +1,8 @@
 import com.google.gson.*;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.function.Executable;
-
-import static org.junit.jupiter.api.Assertions.*;
-
-import tracker.managers.*;
 import tracker.exceptions.AddTaskException;
+import tracker.managers.*;
 import tracker.tasks.Epic;
 import tracker.tasks.Subtask;
 import tracker.tasks.Task;
@@ -22,13 +19,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.*;
 import static tracker.tasks.Status.*;
 
 public abstract class TaskManagerTest<T extends TaskManager> {
 
-    T taskManager;
-    static KVServer kvServer;
-    HttpTaskServer taskServer;
+    protected T taskManager;
+    protected static KVServer kvServer;
+    protected HttpTaskServer taskServer;
 
     public TaskManagerTest(T taskManager) {
         this.taskManager = taskManager;

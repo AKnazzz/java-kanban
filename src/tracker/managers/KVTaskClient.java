@@ -18,7 +18,7 @@ public class KVTaskClient {
     }
 
     private String apiKey;
-    private HttpClient client;
+    private final HttpClient client;
     private HttpRequest request;
 
     public KVTaskClient(String uriString) {
@@ -36,11 +36,10 @@ public class KVTaskClient {
         HttpResponse<String> response = null;
         try {
             response = client.send(request, handler);
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (InterruptedException e) {
+        } catch (IOException | InterruptedException e) {
             e.printStackTrace();
         }
+        assert response != null;
         if (response.statusCode() == 200) {
             apiKey = "API_KEY=" + response.body();
         }
@@ -58,11 +57,10 @@ public class KVTaskClient {
         HttpResponse<String> response = null;
         try {
             response = client.send(request, handler);
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (InterruptedException e) {
+        } catch (IOException | InterruptedException e) {
             e.printStackTrace();
         }
+        assert response != null;
         if (response.statusCode() != 200) {
             System.out.println("Ошибка при сохранении значения ключа" + key + " на сервер");
         }
@@ -79,11 +77,10 @@ public class KVTaskClient {
         HttpResponse<String> response = null;
         try {
             response = client.send(request, handler);
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (InterruptedException e) {
+        } catch (IOException | InterruptedException e) {
             e.printStackTrace();
         }
+        assert response != null;
         if (response.statusCode() == 200) {
             return response.body();
         } else {
